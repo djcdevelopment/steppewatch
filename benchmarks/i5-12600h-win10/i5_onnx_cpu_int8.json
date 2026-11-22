@@ -1,0 +1,119 @@
+{
+  "timestamp_utc": "2026-11-22T09:57:42Z",
+  "hardware": {
+    "os_description": "Microsoft Windows 10.0.19045",
+    "architecture": "X64",
+    "framework": ".NET 10.0.12",
+    "logical_cores": 16,
+    "total_memory_gib": 31.7,
+    "vector_hardware_accelerated": true,
+    "vector_float_count": 8,
+    "avx2_supported": true,
+    "fma_supported": true,
+    "avx_vnni_supported": false,
+    "avx512_vnni_supported": false,
+    "arm_adv_simd_supported": false,
+    "active_int8_kernel": "x86_avx2_vpmaddubsw",
+    "active_fp32_kernel": "x86_avx2_fma_256"
+  },
+  "embedder": "onnx_minilm_cpu(model_quantized.onnx)",
+  "active_provider": "cpu",
+  "model_file": "model_quantized.onnx",
+  "model_mi_b": 21.91,
+  "max_seq_len": 128,
+  "part_a_neural_encode_ms": {
+    "B=1": 3.19,
+    "B=8": 13.99,
+    "B=16": 21.79
+  },
+  "part_a_neural_texts_per_sec": {
+    "B=1": 313.5,
+    "B=8": 571.8,
+    "B=16": 734.3
+  },
+  "part_b_paraphrase": {
+    "neural_same": 0.3273,
+    "neural_diff": 0.0087,
+    "hash_same": 0.1015,
+    "hash_diff": 0.0825
+  },
+  "part_c_thrash": {
+    "healthy": {
+      "trace_id": "neural-healthy",
+      "thrash_detected": false,
+      "thrash_score": 0,
+      "thrash_threshold": 0.65,
+      "action": "continue",
+      "mean_adj_cosine": 0.812,
+      "max_osc_cosine": 0.7992,
+      "all_pairs_cosine": 0.7131,
+      "error_repeat_ratio": 0.8,
+      "stagnation_ratio": 0.25,
+      "tail_new_targets": 10,
+      "productive_debug_progression": true,
+      "progress_score": 1,
+      "latency_ms": 54.74,
+      "backend": "onnx_minilm_cpu(model_quantized.onnx)"
+    },
+    "stall": {
+      "trace_id": "neural-polite-stall",
+      "thrash_detected": true,
+      "thrash_score": 1,
+      "thrash_threshold": 0.65,
+      "action": "early_abort_and_reroute",
+      "mean_adj_cosine": 0.7044,
+      "max_osc_cosine": 0.8817,
+      "all_pairs_cosine": 0.7504,
+      "error_repeat_ratio": 0.6,
+      "stagnation_ratio": 1,
+      "tail_new_targets": 0,
+      "productive_debug_progression": false,
+      "progress_score": 0,
+      "latency_ms": 12.37,
+      "backend": "onnx_minilm_cpu(model_quantized.onnx)"
+    }
+  },
+  "part_d_grounding": {
+    "repo": "C:\\work\\steppewatch",
+    "files_scanned": 26,
+    "symbols_indexed": 239,
+    "index_ms": 534.34,
+    "query_ms": 6.2,
+    "synthetic_false_claim": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs is missing an implementation or test for TokenRegex",
+    "ground_truth_ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:20",
+    "caught_in_top5": true,
+    "caught_rank": 1,
+    "top5_hits": [
+      {
+        "rank": 1,
+        "ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:20",
+        "score": 0.7785,
+        "line_text": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:20 | private static partial Regex TokenRegex();"
+      },
+      {
+        "rank": 2,
+        "ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:5",
+        "score": 0.7611,
+        "line_text": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:5 | public interface ITextEmbedder"
+      },
+      {
+        "rank": 3,
+        "ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:17",
+        "score": 0.7597,
+        "line_text": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:17 | public string BackendName =\u003E \u0022hash384_dotnet_simd\u0022;"
+      },
+      {
+        "rank": 4,
+        "ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:13",
+        "score": 0.732,
+        "line_text": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:13 | public sealed partial class Hash384Embedder : ITextEmbedder"
+      },
+      {
+        "rank": 5,
+        "ref": "dotnet/src/Steppewatch.Cli/Program.cs:200",
+        "score": 0.6969,
+        "line_text": "dotnet/src/Steppewatch.Cli/Program.cs:200 | private static int RunSelfTap(ITextEmbedder embedder, string[] args)"
+      }
+    ]
+  }
+}

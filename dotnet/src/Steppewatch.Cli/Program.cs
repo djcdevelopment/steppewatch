@@ -3,7 +3,7 @@ using Steppewatch.Core;
 
 namespace Steppewatch.Cli;
 
-internal static class Program
+public static class Program
 {
     private static readonly JsonSerializerOptions PrettyJson = new()
     {
@@ -17,7 +17,9 @@ internal static class Program
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
 
-    public static int Main(string[] args)
+    public static int Main(string[] args) => RunWithEmbedder(new Hash384Embedder(), args);
+
+    public static int RunWithEmbedder(ITextEmbedder embedder, string[] args)
     {
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
         {
@@ -27,7 +29,6 @@ internal static class Program
 
         string cmd = args[0].ToLowerInvariant();
         var rest = args[1..];
-        var embedder = new Hash384Embedder();
 
         return cmd switch
         {

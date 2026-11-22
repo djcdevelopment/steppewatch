@@ -117,7 +117,7 @@ Verified on a 4-year-old **Dell Precision 3571 (`i5-12600H`, 32 GB RAM, Windows 
 | `Q = 16` | `14.16 – 16.27 ms` | **`6.51 – 8.70 ms`** | `6.70 – 7.15 ms` | **`~2.0×`** |
 | `Q = 64` | `62.66 – 67.34 ms` | **`27.91 – 28.67 ms`** | `28.68 – 30.78 ms` | **`~2.3×`** |
 
-Even on battery with zero NPU and zero discrete GPU, exact `INT8` runs in **`6.70–7.15 ms`** at `Q=16` (`2.0×–4.1×` faster than `FP32` purely by moving `4×` fewer bytes), flags polite stalls in **`1.37 ms`**, and catches repo claims at Rank `#1` in **`1.06 ms`**.
+Even on battery with zero NPU and zero discrete GPU, exact `INT8` runs in **`6.70–7.15 ms`** at `Q=16` (`2.0×–4.1×` faster than `FP32` purely by moving `4×` fewer bytes), flags polite stalls in **`1.37 ms`**, and catches repo claims at Rank `#1` in **`1.06 ms`**. With the opt-in `.NET 10` neural ONNX backend ([`COOKBOOK-WIN10-I5.md`](COOKBOOK-WIN10-I5.md#option-3-optional-neural-all-minilm-l6-v2-onnx-runtime-backend-cpu-int8--intel-iris-xe-directml)), real `all-MiniLM-L6-v2` (`21.9 MiB` `INT8` CPU) runs at **`3.19 ms` (`B=1`) / `734 texts/sec` (`B=16`)** with **`16.8×`** sharper zero-overlap paraphrase separation than lexical hashing, indexing `239` symbols in **`534 ms`** and catching the claim at **Rank `#1`** in **`6.2 ms`** (and Intel Iris Xe DirectML runs cleanly too once `DirectML.dll 1.15.4` + static `64/128` buckets are bundled).
 
 ---
 

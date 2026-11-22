@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Steppewatch.Onnx</AssemblyName>
+    <RootNamespace>Steppewatch.Onnx</RootNamespace>
+    <UseDirectML Condition="'$(UseDirectML)' == '' and ($(RuntimeIdentifier.StartsWith('win')) or '$([MSBuild]::IsOSPlatform(Windows))' == 'true')">true</UseDirectML>
+    <DefineConstants Condition="'$(UseDirectML)' == 'true'">$(DefineConstants);STEPPEWATCH_DML</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Steppewatch.Core\Steppewatch.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseDirectML)' == 'true'">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" />
+    <PackageReference Include="Microsoft.AI.DirectML" Version="1.15.4" GeneratePathProperty="true" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseDirectML)' == 'true' and Exists('$(PkgMicrosoft_AI_DirectML)/bin/x64-win/DirectML.dll')">
+    <!-- Windows 10 19045 ships DirectML 1.0 in System32; bundle redistributable 1.15.4 next to exe so ORT 1.24.4 DML initializes cleanly. -->
+    <Content Include="$(PkgMicrosoft_AI_DirectML)/bin/x64-win/DirectML.dll"
+             Link="DirectML.dll"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseDirectML)' != 'true'">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.4" />
+  </ItemGroup>
+</Project>

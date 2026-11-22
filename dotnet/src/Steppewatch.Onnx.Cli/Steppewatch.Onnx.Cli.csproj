@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>steppewatch-onnx</AssemblyName>
+    <RootNamespace>Steppewatch.Onnx.Cli</RootNamespace>
+    <UseDirectML Condition="'$(UseDirectML)' == '' and ($(RuntimeIdentifier.StartsWith('win')) or '$([MSBuild]::IsOSPlatform(Windows))' == 'true')">true</UseDirectML>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Steppewatch.Core\Steppewatch.Core.csproj" />
+    <ProjectReference Include="..\Steppewatch.Onnx\Steppewatch.Onnx.csproj" />
+    <ProjectReference Include="..\Steppewatch.Cli\Steppewatch.Cli.csproj" />
+  </ItemGroup>
+</Project>

@@ -40,6 +40,29 @@ All timings are the median of 6, in ms, from `steppewatch bench`. Raw receipts a
   - Take at least 20 timed samples and report median plus p10/p90.
   - Record the power source, power plan, and JIT mode in the receipt.
 
+## Follow-up: `v1.8` Tier-1 Warmup Verification + Optional Neural ONNX (`all-MiniLM-L6-v2` CPU `INT8` vs Intel Iris Xe DirectML)
+
+Running the `v1.8` Tier-1 pre-warmed binary (`0d7399d`, `WarmupTier1` + `15` samples) on the same Dell Precision 3571 eliminated the small-`N` Tier-0 inflation and `42.93 ms` spike while preserving full Dynamic PGO throughput at `N = 262,144`:
+
+| Config | `v1.7.1` Cold Tiered (`run 1 / 2`) | `v1.7.1` `TC=0` (`run 1 / 2`) | **`v1.8` Tier-1 Pre-Warmed (`run 1 / 2`)** |
+|---|---:|---:|---:|
+| `INT8 N=4096 Q=1` | `0.73 / 0.68 ms` | `0.06 / 0.08 ms` | **`0.21 / 0.27 ms`** |
+| `INT8 N=16384 Q=64` | `11.88 / 11.52 ms` | `2.01 / 1.95 ms` | **`1.99 / 1.86 ms`** |
+| `INT8 N=65536 Q=64` | `9.17 / 42.93 ms` *(spike)* | `8.59 / 8.28 ms` | **`7.12 / 6.99 ms`** *(spike gone, beats `TC=0`)* |
+| `INT8 N=262144 Q=1 / 8 / 16 / 64` | `1.66–1.87 / 3.53–4.02 / 6.51–8.70 / 27.91–28.67 ms` | `1.9 / 4.2 / 8.7 / 33.6–34.4 ms` | **`1.60–1.63 / 3.38–3.60 / 6.78–6.95 / 27.41–28.05 ms`** |
+
+We also benchmarked the opt-in `.NET 10` neural embedder (`dotnet/src/Steppewatch.Onnx`, `all-MiniLM-L6-v2`, `384-D`) on both `i5-12600H` CPU and **Intel Iris Xe Graphics** (`Driver 32.0.101.7088`, `DirectML.dll 1.15.4`):
+
+| Neural Backend (`all-MiniLM-L6-v2`) | Model | `B=1` | `B=8` | `B=16` | Stall Check | Full Repo (`239` syms) / Query | Caught Rank |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **CPU `INT8`** (`model_quantized.onnx`) | `21.9 MiB` | **`3.19 ms`** (`314/s`) | **`13.99 ms`** (`572/s`) | **`21.79 ms`** (`734/s`) | **`12.37 ms`** | **`534 ms`** / **`6.2 ms`** | **`#1`** |
+| **CPU `FP32`** (`model.onnx`) | `86.2 MiB` | `4.04 ms` (`248/s`) | `18.38 ms` (`435/s`) | `28.99 ms` (`552/s`) | `13.62 ms` | `728 ms` / `5.8 ms` | **`#1`** |
+| **Iris Xe DirectML `FP32`** *(static `64/128`)* | `86.2 MiB` | `54.81 ms` (`18/s`) | `28.00 ms` (`286/s`) | `86.00 ms` (`186/s`) | `45.83 ms` | `2,090 ms` / `69.9 ms` | **`#1`** |
+| **Iris Xe DirectML `FP16`** *(static `64/128`)* | `43.2 MiB` | `46.09 ms` (`22/s`) | `48.37 ms` (`165/s`) | `109.27 ms` (`146/s`) | `53.97 ms` | `2,511 ms` / `52.2 ms` | **`#1`** |
+
+- **DirectML static bucket speedup:** Before snapping DirectML inputs to static `64 / 128` sequence buckets, dynamic seq lengths triggered DX12 shader recompilation on every batch (`4,762 ms` repo index / `623 ms` query for `FP32`; `5,215 ms` / `308 ms` for `FP16`). Static buckets cut query latency **`5.9×–8.9×`** and indexing **`2.1×–2.3×`**.
+- **Takeaway:** For a `22 MiB` `INT8` MiniLM encoder, **`i5-12600H` CPU `INT8` (`3.19 ms` / `734 texts/sec`) decisively beats Intel Iris Xe DirectML** while keeping GPU utilization at `0%`.
+
 ## Files
 
 | File | Conditions |
@@ -48,3 +71,7 @@ All timings are the median of 6, in ms, from `steppewatch bench`. Raw receipts a
 | `battery_fixed_d8f8586_run{1,2}.json` | battery, exact AVX2 kernel |
 | `ac_v1.7.1_d8cfc8c_run{1,2}.json` | AC, default tiered JIT |
 | `ac_v1.7.1_d8cfc8c_tc0_run{1,2}.json` | AC, `DOTNET_TieredCompilation=0` |
+| `i5_v1.8_warmed_run2.json` | `v1.8` `WarmupTier1` + `15` samples (`run 2` JSON receipt) |
+| `i5_onnx_cpu_int8.json` | Neural `all-MiniLM-L6-v2` `INT8` (`21.9 MiB`) on `i5-12600H` CPU |
+| `i5_onnx_dml_fp32_static.json` | Neural `all-MiniLM-L6-v2` `FP32` on Intel Iris Xe via DirectML `1.15.4` (static `64/128`) |
+| `i5_onnx_dml_fp16_static.json` | Neural `all-MiniLM-L6-v2` `FP16` on Intel Iris Xe via DirectML `1.15.4` (static `64/128`) |
