@@ -307,13 +307,15 @@ def main() -> int:
     fastest_backend = "mlx_metal_fp16_ms" if "mlx_metal_fp16_ms" in mm else (
         "torch_mps_fp16_ms" if "torch_mps_fp16_ms" in mm else "cpu_fp32_ms"
     )
+    timed_precision = "FP16" if fastest_backend != "cpu_fp32_ms" else "FP32"
+    timed_mib = mm["slab_fp16_mib"] if timed_precision == "FP16" else round(mm["slab_fp16_mib"] * 2.0, 2)
     q16_262k = mm[fastest_backend]["262144"]["Q=16"]
     h_score = thrash["healthy_trace"]["thrash_score"]
     s_score = thrash["polite_stall_loop"]["thrash_score"]
     print("\n=== What You Just Proved On Your Own Hardware ($0.00 API Cost) ===")
     print(
-        f"  1. Matrix power : Scored Q=16 queries against 262,144 vectors (~{mm['slab_int8_plus_scales_mib']} MiB INT8) "
-        f"in {q16_262k:.2f} ms ({fastest_backend})."
+        f"  1. Matrix power : Scored Q=16 queries against 262,144 vectors ({timed_mib} MiB {timed_precision} timed; "
+        f"{mm['slab_int8_plus_scales_mib']} MiB in INT8+scales) in {q16_262k:.2f} ms ({fastest_backend})."
     )
     print(
         f"  2. Loop radar   : Separated healthy debugging ({h_score:.4f}) from a silent polite stall ({s_score:.4f}) "

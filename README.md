@@ -90,6 +90,19 @@ Full methodology, honest misses, and cryptographic receipt digests live in [`PAP
 
 > **Explicit Verification Boundary:** Zero-VRAM NPU slab indexing, post-flight claim grounding, silent-loop thrash separation, parallel tool-ack calibration, and `NS_EPISODES`/`NS_TRAJECTORY` partitioning are live-verified. Multi-week longitudinal JEPA predictor training curves across hundreds of real production trajectories are ongoing evaluation and explicitly not claimed yet.
 
+### Independent Apple M2 Verification (`Mac14,7`, 24 GB Unified Memory — November 21, 2026)
+
+Verified on an independent 2022 13-inch M2 MacBook Pro (`PyTorch MPS` Metal `FP16` `192 MiB` matrix vs. CPU `FP32` `384 MiB` against `262,144 × 384` vectors, Option A zero-download run):
+
+| Batch (`Q` vs. `262,144` vectors) | M2 CPU (`FP32`) | M2 Metal GPU (`FP16`, `192 MiB`) | Speedup |
+|---:|---:|---:|---:|
+| `Q = 1` | `8.83 ms` | **`8.43 ms`** | `1.05×` |
+| `Q = 8` | `34.75 ms` | **`10.14 ms`** | **`3.43×`** |
+| `Q = 16` | `46.06 ms` | **`10.20 ms`** | **`4.52×`** |
+| `Q = 64` | `64.34 ms` | **`13.71 ms`** | **`4.69×`** |
+
+Scaling from `1` to `16` concurrent queries added only **`+1.77 ms`** on M2 Metal (`8.43 -> 10.20 ms`), while silent-stall detection flagged `0.8635` vs. `0.0000` in **`2.31 ms`** and repo claim grounding indexed `94` symbols in `25.79 ms` (query **`2.78 ms`**). *(Note: `96.5 MiB` is the quantized `INT8 + FP16 scales` slab footprint; the timed Metal matrix above is `192 MiB` in `FP16`.)*
+
 ---
 
 ## Pairs Well With NVIDIA `auto-ontology`

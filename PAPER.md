@@ -154,9 +154,24 @@ While the NPU inference path, zero-GPU isolation, post-flight claim grounding, t
 | Architectural Role | Intel Arrow Lake NPU (OpenVINO) | Apple Silicon M2 (`Mac14,7`, 24 GB Unified Memory) |
 |---|---|---|
 | **Fixed-Shape `384-D` Text Encoding** | OpenVINO `INT8`/`FP16` static IR on 2-tile NPU (`0` discrete GPU VRAM) | `CoreML` (`CoreMLExecutionProvider` / ANE) for fixed static sequence buckets (`S=128`), **or** `MLX` / `PyTorch MPS` on the 10-core Metal GPU (`100 GB/s` UMA) for dynamic lengths |
-| **Batched Multi-Namespace Slab MatMul (`[Q, 384] @ [384, N]`)** | Pinned `96.5 MiB` `ZeroRemoteContext` `INT8` slab on 2-tile NPU (`Q ≥ 8`) | `MLX` (`mlx.core`) FP16 / INT8 matrix multiply in unified memory (zero PCIe copy; `24 GB` holds millions of columns easily) |
+| **Batched Multi-Namespace Slab MatMul (`[Q, 384] @ [384, N]`)** | Pinned `96.5 MiB` `ZeroRemoteContext` `INT8` slab on 2-tile NPU (`Q ≥ 8`) | `PyTorch MPS` / `MLX` `FP16` (`192.0 MiB` at `262,144` cols) or `INT8` (`96.5 MiB`) in unified memory (zero PCIe copy) |
 | **Tiny JEPA Predictor Training (`<2M` params)** | Background CPU (`< 2 s` per run) | `MLX` / `PyTorch MPS` or CPU over the same unified memory pool |
 | **Cost to Remote Frontier Agents** | `$0.00` API tokens, `0` discrete GPU contention | `$0.00` API tokens, `0` cloud rate-limit contention |
+
+### 4.1 Independent Apple M2 Verification (`Mac14,7`, 24 GB Unified Memory — November 21, 2026)
+
+An independent third-party builder verified Steppewatch Option A (`scripts/01_see_the_math_m2.py --force-hash`) against a checksum-verified export on a 2022 13-inch MacBook Pro (**Apple M2, `Mac14,7`, 24 GB unified memory**) using its existing `PyTorch MPS` Metal backend with zero additional installs or model downloads:
+
+| Batch Size (`Q` against `262,144 × 384`) | M2 CPU (`FP32`, `384 MiB`) | M2 Metal GPU (`PyTorch MPS FP16`, `192 MiB`) | Speedup |
+|---:|---:|---:|---:|
+| **`Q = 1`** | `8.83 ms` | **`8.43 ms`** | `1.05×` |
+| **`Q = 8`** | `34.75 ms` | **`10.14 ms`** | **`3.43×`** |
+| **`Q = 16`** | `46.06 ms` | **`10.20 ms`** | **`4.52×`** |
+| **`Q = 64`** | `64.34 ms` | **`13.71 ms`** | **`4.69×`** |
+
+- **Batch-Amortization Law Confirmed Across Silicon:** Scaling from `Q = 1` to `Q = 16` (`16×` concurrent agent queries against `262,144` vectors) added only **`+1.77 ms`** (`8.43 ms -> 10.20 ms`) on Apple M2 Metal, and even `Q = 64` completed in **`13.71 ms`** (`4.69×` faster than CPU).
+- **Zero-Token Watchdog & Grounding on M2:** Synthetic polite stall flagged at `0.8635` in **`2.31 ms`** vs. healthy trace at `0.0000`; claim grounding indexed `94` symbols across `11` files in `25.79 ms` and retrieved the real `sigmoid` definition at Rank `#3` in **`2.78 ms`**.
+- **Precision Clarification Adopted:** The independent M2 verification also surfaced an output-summary precision mismatch (displaying the `96.5 MiB INT8` slab size next to the `192.0 MiB FP16` timed Metal matrix); `01_see_the_math_m2.py` now reports the exact timed precision and byte footprint alongside the `INT8+scales` reference.
 
 A standalone hands-on cookbook and runnable scripts for Apple M2 (`Mac14,7`) accompany this paper in [`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md).
 

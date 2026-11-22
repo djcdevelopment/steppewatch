@@ -53,7 +53,13 @@ On November 21, 2026, we tested this architecture on live Intel Arrow Lake NPU h
    - Caught a hallucinated deprecated local port at **Rank #2**, and
    - Flagged **`21 out of 26`** displaced line citations before a human ever had to look.
 3. **Separated Productive Debugging From Polite Stall Loops:** In **`~27 milliseconds`**, sliding-window semantic thrash detection scored a real 5-step coding-and-fixing trace at **`0.0000` (`continue`)** — even though it hit an error in the middle — while flagging a polite 5-step paraphrased stall loop (zero errors, zero new code targets) at **`0.9278` (`early_abort_and_reroute`)**.
-4. **Honest Real-World Calibration Lessons Caught Live:**
+4. **Independent Verification on a 2022 Apple M2 MacBook Pro (24 GB Unified Memory):** On the same day, an independent builder ran Steppewatch's zero-download benchmark on an M2 MacBook Pro using its existing `PyTorch MPS` Metal backend (`192 MiB` FP16 matrix vs. `384 MiB` FP32 CPU against `262,144` vectors):
+   - `Q = 1`: `8.43 ms` Metal vs. `8.83 ms` CPU
+   - `Q = 8`: `10.14 ms` Metal vs. `34.75 ms` CPU (`3.4×` faster)
+   - `Q = 16`: **`10.20 ms`** Metal vs. `46.06 ms` CPU (**`4.5×` faster** — scaling 16× in batch size added only **`+1.77 ms`**!)
+   - `Q = 64`: **`13.71 ms`** Metal vs. `64.34 ms` CPU (**`4.7×` faster**)
+   - Silent stall flagged at `0.8635` vs. `0.0000` healthy in **`2.31 ms`**, and local repo claim grounding ran in **`2.78 ms`**.
+5. **Honest Real-World Calibration Lessons Caught Live:**
    - During a real parallel edit burst, terse tool acknowledgements (`"Created file."` ×3) initially caused a transient `0.72` false positive; filtering bare tool-ack stubs dropped it straight to **`0.0000`**.
    - Mixing raw per-line quote vectors into the same slab namespace as coarse symbol vectors crowded top-20 discovery — proving empirically that line anchors and symbol indices belong in separate namespaces.
 
