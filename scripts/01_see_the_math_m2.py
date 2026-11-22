@@ -302,7 +302,31 @@ def main() -> int:
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
     args.receipt.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+
+    # Plain-English builder takeaway summarizing what their own silicon just did
+    fastest_backend = "mlx_metal_fp16_ms" if "mlx_metal_fp16_ms" in mm else (
+        "torch_mps_fp16_ms" if "torch_mps_fp16_ms" in mm else "cpu_fp32_ms"
+    )
+    q16_262k = mm[fastest_backend]["262144"]["Q=16"]
+    h_score = thrash["healthy_trace"]["thrash_score"]
+    s_score = thrash["polite_stall_loop"]["thrash_score"]
+    print("\n=== What You Just Proved On Your Own Hardware ($0.00 API Cost) ===")
+    print(
+        f"  1. Matrix power : Scored Q=16 queries against 262,144 vectors (~{mm['slab_int8_plus_scales_mib']} MiB INT8) "
+        f"in {q16_262k:.2f} ms ({fastest_backend})."
+    )
+    print(
+        f"  2. Loop radar   : Separated healthy debugging ({h_score:.4f}) from a silent polite stall ({s_score:.4f}) "
+        "with zero cloud tokens."
+    )
+    if not grounding.get("skipped"):
+        print(
+            f"  3. Repo ground  : Indexed {grounding['symbols_indexed']} symbols in {grounding['index_ms']} ms "
+            f"and caught the synthetic false claim at Rank #{grounding['caught_rank']} ({grounding['query_ms']} ms)."
+        )
     print(f"\nSaved receipt -> {args.receipt}")
+    print("Next step (read-only on your own Claude Code / Codex / Hermes logs):")
+    print("  python3 scripts/02_watch_frontier_agents.py --once")
     return 0
 
 

@@ -1,6 +1,6 @@
 # Steppewatch
 
-**Zero-token client-accelerator supervision and prediction-residual JEPA data collection for frontier and local AI agent fleets.**
+**Your laptop already has matrix silicon sitting at 0% while your cloud AI agents burn tokens. Put it to work for `$0.00`.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB)](requirements-m2.txt)
@@ -9,79 +9,86 @@
 
 **Author:** Derek Ciula · Steppe Integrations · **Date:** November 21, 2026
 
-> **Start here:**
-> - **Human builder on Apple Silicon (M2/M3/M4)?** Jump to [`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md) and see real numbers on your own hardware in 5 minutes (`$0` API cost).
-> - **AI Agent (Claude Code, Codex CLI, Hermes, or subagent) self-tapping this repo?** Read [`AGENTS.md`](AGENTS.md) and run `python3 scripts/self_tap.py --repo .` for machine-readable JSON onboarding.
-> - **Looking for the formal architecture & empirical benchmarks?** Read [`PAPER.md`](PAPER.md) (`v1.1`, live hardware receipts verified `2026-11-21`).
+---
+
+## Why Almost Nobody Tells You This
+
+Cloud AI providers bill by the token — whether your coding agent ships working software, gets stuck paraphrasing the same plan five turns in a row, or hires a *second* cloud model to babysit the first one. Almost no one selling cloud APIs has an incentive to remind you how much unused ML compute you already paid for on your own desk.
+
+Open Activity Monitor or Task Manager while Claude Code, Codex CLI, or Hermes is running. On almost every modern machine — an **Apple Silicon MacBook** (unified memory + Metal GPU + 16-core Neural Engine) or a modern **Intel/AMD NPU laptop** — your dedicated matrix hardware is sitting completely idle.
+
+**Steppewatch** shows you how to reclaim that local hardware in 5 minutes — with **zero API keys, zero network interception, and `$0.00` extra token cost** — for two things:
+1. **Watch your remote frontier agents & subagents in real time:** Catch silent polite stall loops in milliseconds and check agent claims against your real codebase before you spend your own review time.
+2. **Collect your own local JEPA training data:** Turn every run into a 5-field prediction-residual episode so your machine trains a tiny personal watchdog tuned to *your* repos and *your* agents.
+
+![Steppewatch UML Horizontal Swimlane Architecture](docs/architecture/steppewatch-dual-loop.svg)
 
 ---
 
-## The Problem (and the Idle-Silicon Fix)
+## Pick Your Own Starting Point (You Own the Hardware — Test the Math Yourself)
 
-When you run remote frontier coding agents and parallel subagents (Claude Code, Codex CLI, Hermes, etc.), two failure modes quietly burn your tokens and your time:
+Nothing here asks you to trust marketing claims. Run one command on your own machine and read your own millisecond numbers:
 
-1. **Silent / Polite Stall Loops:** Agents look busy while paraphrasing *"let me double-check the integration plan before editing"* five turns in a row with zero new files or code targets touched.
-2. **Unverified Claims Wearing Verification Formatting:** Agents assert a test is missing when it already ships in the file they read, cite deprecated local ports, or drift line citations by 8–25 lines — dumping manual verification onto you.
+### Option A — 60-Second Dry Run (Just Python + `numpy`, Zero Model Downloads)
+```bash
+git clone https://github.com/djcdevelopment/steppewatch.git
+cd steppewatch
+python3 -m venv .venv && source .venv/bin/activate
+pip install numpy
+python3 scripts/01_see_the_math_m2.py --force-hash --repo .
+```
 
-Hiring *another* frontier LLM to poll and babysit your subagents doubles token burn and latency. Meanwhile, your laptop's own matrix silicon — an **Apple Silicon Neural Engine / Unified Memory Metal GPU** or an **Intel/AMD laptop NPU** — sits at **0% utilization**.
-
-**Steppewatch** turns that idle local silicon into a dual-loop lookout at **`$0.00` extra API cost**:
-
-![Steppewatch Dual-Loop Client-Silicon Supervision and JEPA Residual Architecture](docs/architecture/steppewatch-dual-loop.svg)
-
----
-
-## Verified Empirical Highlights (Live Hardware — November 21, 2026)
-
-Full methodology, honest misses, and cryptographic receipt digests live in [`PAPER.md`](PAPER.md):
-
-| Capability Measured (Intel Arrow Lake NPU, OpenVINO INT8/FP16) | Measured Result | Latency | Extra LLM Tokens |
-|---|---|---:|---:|
-| **Discrete GPU VRAM contention** | **`0.0 / 0.0 MiB`** (`verified_zero_gpu_fd_binding = true`) | — | `0` |
-| **Pinned `262,144`-col INT8 slab capacity** (`96.5 MiB`, `0` tensor rebinds) | `89` files (`848` code + `.md` syms) = **`0.92%` occupied** | **`1.57 s`** warm (`6.50 s` cold) | `0` |
-| **Post-flight substance error catch** (vs. independent frontier audit) | **`3 / 3` real substance errors caught** (Rank #1–#2) | **`34–75 ms`** | `0` |
-| **Displaced line-anchor detection** (`23/24` drifted by `-8..-25` lines) | **`21 / 26` flagged outside cited span** | **`54–77 ms`** | `0` |
-| **Silent polite-stall separation** (`/detect_thrash`) | Productive **`0.0000`** vs. Polite stall **`0.9278`** | **`26.6–27.7 ms`** | `0` |
-| **Parallel tool-ack false-positive calibration** (Proof Step B) | Filtering bare `"Created file."` stubs: `0.72` -> **`0.0000`** | `< 3 ms` | `0` |
-
-> **Explicit Verification Boundary:** Zero-VRAM NPU slab indexing, post-flight claim grounding, silent-loop thrash separation, parallel tool-ack calibration, and `NS_EPISODES`/`NS_TRAJECTORY` partitioning are live-verified. Multi-week longitudinal JEPA predictor training curves across hundreds of real production trajectories are ongoing evaluation and explicitly not claimed yet.
-
----
-
-## 5-Minute Quick Start (Humans)
-
-Zero API keys required. Runs immediately with `numpy` alone (`--force-hash`), or with real `all-MiniLM-L6-v2` embeddings + Apple Silicon Metal (`MLX` / `MPS`) via `requirements-m2.txt`:
-
+### Option B — Full 5-Minute Run (Real `all-MiniLM-L6-v2` Embeddings + Apple Silicon `MLX` Metal GPU)
+On an Apple M2/M3/M4 MacBook (or Linux/Windows laptop), install the full local stack and point it at any git repo you actually work in:
 ```bash
 git clone https://github.com/djcdevelopment/steppewatch.git
 cd steppewatch
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-m2.txt
 
-# 1. See the math on your own machine (CPU vs. MLX/MPS MatMul, thrash separation, repo claim check)
+# 1. Benchmark your own CPU vs. Metal GPU (up to 262,144 vectors) + test thrash & claim grounding
 python3 scripts/01_see_the_math_m2.py --repo /path/to/any/local/repo
 
-# 2. Watch active Claude Code (+ subagents), Codex CLI, or Hermes JSONL transcripts read-only
+# 2. Inspect your own active Claude Code (+ subagents), Codex CLI, or Hermes logs read-only
 python3 scripts/02_watch_frontier_agents.py --once
 
-# 3. Verify the tiny local JEPA 5-field residual training loop on synthetic Day-1 episodes
+# 3. Watch a tiny local JEPA predictor train on 5-field residual episodes in < 1 second
 python3 scripts/03_train_tiny_jepa.py --demo-synthetic
 ```
+👉 **Running on an Apple M2/M3/M4 Mac?** Follow the step-by-step **[`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md)** — it explains unified memory vs. Neural Engine vs. `MLX` Metal GPU in plain English and shows exactly where Claude Code, Codex CLI, and Hermes already save their local JSONL logs on macOS.
+
+### Option C — Let Your Own Agent Self-Tap & Walk You Through It
+Already live inside Claude Code, Codex CLI, or Hermes? Paste this single prompt:
+
+> *"Clone `https://github.com/djcdevelopment/steppewatch.git`, read `AGENTS.md`, run `python3 scripts/self_tap.py --repo .`, and show me what my local hardware can do (don't change any global configs without asking me)."*
+
+Everything runs **read-only on local transcripts**, touches **zero API keys**, and gives you clean JSON output ([`AGENTS.md`](AGENTS.md)).
 
 ---
 
-## Agent Self-Tap (Let Your Frontier Agents Wire Themselves In)
+## How to Read Your Own Numbers (No ML PhD Required)
 
-Point Claude Code, Codex CLI, Hermes, or any coding agent directly at this repo with:
+When `01_see_the_math_m2.py` finishes on your machine, you'll see three concrete proofs:
+- **Part A (`262,144` columns = `96.5 MiB`):** A single matrix holding hundreds of repos worth of symbols, rules, and history takes less than `0.4%` of a 24 GB Mac's memory and scores `16` queries at once in milliseconds — faster than a single round-trip to a cloud API.
+- **Part B (`thrash_score` `0.0000` vs. `0.85+`):** Even when a healthy agent hits a bug mid-run, it touches new symbols and applies real fixes (`score = 0.0`, `continue`). A polite agent that re-reads the same plan 5 times with zero new code targets lights up immediately (`early_abort_and_reroute`) — with `$0` spent on a second LLM.
+- **Part C (Claim Grounding):** The script picks a real function from your own repo, fakes an agent claim saying *"this repo is missing `<symbol>`"*, and shows your local silicon finding the exact `file:line` proving the claim false in milliseconds.
 
-> *"Read `AGENTS.md` in `steppewatch` and self-tap this workspace so you can supervise subagents and log local JEPA residual episodes."*
+---
 
-An agent can self-tap safely in **3 non-destructive steps** (full protocol in [`AGENTS.md`](AGENTS.md)):
-1. **Probe & verify local silicon (JSON output):** `python3 scripts/self_tap.py --repo .`
-2. **Adopt the checkpoint ruleset:** Copy [`rules/frontier-agent-watchdog-skill.md`](rules/frontier-agent-watchdog-skill.md) into `CLAUDE.md`, `AGENTS.md`, `.claude/skills/steppewatch/SKILL.md`, or Hermes skills.
-3. **Supervise subagents & log 5-field episodes (JSON output):** `python3 scripts/02_watch_frontier_agents.py --once --json`
+## Verified Reference Measurements (Intel Arrow Lake NPU — November 21, 2026)
 
-Everything runs **read-only against local transcripts**, touches **zero API keys**, and never intercepts network traffic.
+Full methodology, honest misses, and cryptographic receipt digests live in [`PAPER.md`](PAPER.md):
+
+| Capability Measured (OpenVINO INT8/FP16 NPU) | Measured Result | Latency | Extra LLM Tokens |
+|---|---|---:|---:|
+| **Discrete GPU VRAM contention** | **`0.0 / 0.0 MiB`** (`verified_zero_gpu_fd_binding = true`) | — | `0` |
+| **Pinned `262,144`-col INT8 slab** (`96.5 MiB`, `0` rebinds) | `89` files (`848` code + `.md` syms) = **`0.92%` occupied** | **`1.57 s`** warm (`6.50 s` cold) | `0` |
+| **Post-flight substance error catch** (vs. frontier audit) | **`3 / 3` real substance errors caught** (Rank #1–#2) | **`34–75 ms`** | `0` |
+| **Displaced line-anchor detection** (`23/24` drifted `-8..-25` lines) | **`21 / 26` flagged outside cited span** | **`54–77 ms`** | `0` |
+| **Silent polite-stall separation** (`/detect_thrash`) | Productive **`0.0000`** vs. Polite stall **`0.9278`** | **`26.6–27.7 ms`** | `0` |
+| **Parallel tool-ack calibration** (Proof Step B) | Filtering bare `"Created file."` stubs: `0.72` -> **`0.0000`** | `< 3 ms` | `0` |
+
+> **Explicit Verification Boundary:** Zero-VRAM NPU slab indexing, post-flight claim grounding, silent-loop thrash separation, parallel tool-ack calibration, and `NS_EPISODES`/`NS_TRAJECTORY` partitioning are live-verified. Multi-week longitudinal JEPA predictor training curves across hundreds of real production trajectories are ongoing evaluation and explicitly not claimed yet.
 
 ---
 
@@ -98,10 +105,10 @@ If you use NVIDIA's Apache-2.0 open-source [**`NVIDIA/auto-ontology`**](https://
 
 | File | Purpose |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | **Agent Self-Tap Protocol** — Machine-first guide for Claude Code, Codex CLI, Hermes, and subagents to bootstrap, self-check, and supervise without burning extra frontier tokens. |
-| [`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md) | **Apple M2 Builder's Cookbook** — Tailored to 24 GB unified-memory Macs (`Mac14,7`), explaining ANE vs. `MLX` Metal GPU physics, transcript paths, and local JEPA data collection. |
-| [`PAPER.md`](PAPER.md) | **Technical Preprint (`v1.1`)** — Formal architecture, math, live Arrow Lake NPU benchmarks (Proof A & B), Apple Silicon mapping, and `NVIDIA/auto-ontology` interop. |
-| [`docs/EXPLAINER-BRIEF-NOTEBOOKLM.md`](docs/EXPLAINER-BRIEF-NOTEBOOKLM.md) | **Explainer Video / Audio Source Brief** — Clean narrative brief ready to drop straight into NotebookLM for generating a short explainer video or podcast overview. |
+| [`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md) | **Apple M2 Builder's Cookbook** — Step-by-step guide tailored to 24 GB unified-memory Macs (`Mac14,7`), ANE vs. `MLX` Metal GPU physics, transcript paths, and local JEPA data collection. |
+| [`AGENTS.md`](AGENTS.md) | **Agent Self-Tap Protocol** — Machine-first guide for Claude Code, Codex CLI, Hermes, and subagents to bootstrap, self-check, and supervise safely in JSON. |
+| [`PAPER.md`](PAPER.md) | **Technical Preprint (`v1.1`)** — Formal architecture, UML sequence diagram, live Arrow Lake NPU benchmarks (Proof A & B), Apple Silicon mapping, and `NVIDIA/auto-ontology` interop. |
+| [`docs/EXPLAINER-BRIEF-NOTEBOOKLM.md`](docs/EXPLAINER-BRIEF-NOTEBOOKLM.md) | **Explainer Video / Audio Source Brief** — Narrative source file ready to drop into NotebookLM to generate a 3–5 minute explainer video or podcast overview. |
 | [`rules/frontier-agent-watchdog-skill.md`](rules/frontier-agent-watchdog-skill.md) | **Drop-In Starter Ruleset / Skill** — `INTENT:`, `STUCK:`, grounded-claims-only, compact `END_STATE:` receipt, and disjoint subagent targets. |
 | [`scripts/self_tap.py`](scripts/self_tap.py) | **One-Command Agent Self-Tap Probe** — Detects hardware/backends, finds active Claude/Codex/Hermes logs, runs a fast self-check, and emits structured JSON onboarding instructions. |
 | [`scripts/01_see_the_math_m2.py`](scripts/01_see_the_math_m2.py) | **Hardware Benchmark & Proof** — Batched `[Q, 384] @ [384, 262144]` slab timing, thrash separation, and local repo claim grounding. |

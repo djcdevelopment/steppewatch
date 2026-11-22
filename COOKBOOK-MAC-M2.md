@@ -6,16 +6,16 @@
 
 ---
 
-## The Core Idea (Why Bother?)
+## The Core Idea (Reclaiming the Compute You Already Own)
 
 If you mostly run remote frontier models (Claude, Codex, Hermes, etc.), look at Activity Monitor while they are working:
 
-- Your cloud agent is burning tokens, spawning subagents, reading files, and sometimes quietly getting stuck in a **polite planning loop** (*"Let me double-check the integration plan before editing..."* × 5), drifting out of scope, or hallucinating that a test/function doesn't exist.
+- Your cloud agent is burning metered tokens, spawning subagents, reading files, and sometimes quietly getting stuck in a **polite planning loop** (*"Let me double-check the integration plan before editing..."* × 5), drifting out of scope, or hallucinating that a test/function doesn't exist.
 - Meanwhile, your **24 GB Apple M2** — its 16-core Neural Engine, 10-core Metal GPU, and `100 GB/s` unified memory — is sitting basically idle.
 
-Most people try to fix runaway agents by spawning *another* frontier agent to babysit them. That burns twice the tokens and twice the patience.
+Cloud providers bill per token whether your agent is making progress or spinning in circles, so almost nobody is incentivized to tell you how much real ML supervision power is sitting untouched on your desk. Most people default to spawning *another* cloud agent to babysit the first one — paying twice for the same mistake.
 
-Instead, **Steppewatch** uses your Mac's local silicon for **two tightly connected jobs — at `$0.00` API cost**:
+Instead, **Steppewatch** hands that control back to you using your Mac's local silicon for **two tightly connected jobs — at `$0.00` API cost**:
 
 1. **Watch your frontier agents & subagents in real time:** Tail the local JSONL transcripts that Claude Code, Codex CLI, and Hermes *already write to your SSD*, embed sliding step windows locally (`384-D` vectors), catch both loud error loops and silent paraphrased stall loops in milliseconds, and cross-check agent claims against your real codebase before you spend your own review minutes.
 2. **Collect your own local JEPA training data while they work:** Turn every agent run into a compact **5-field residual episode** (`current_state`, `intended_outcome`, `local_prediction`, `end_state`, `outcome_vs_expectation`) so your M2 can train a tiny local **JEPA (Joint Embedding Predictive Architecture)** watchdog that learns *your* repos and *your* frontier agents' failure habits over time.
@@ -36,18 +36,23 @@ Before writing a line of code, one real Apple Silicon fact saves you hours of gu
 
 ---
 
-## Step 1: See the Math on Your Own Mac (5 Minutes, Zero API Keys)
+## Step 1: See the Math on Your Own Mac (60 Seconds to 5 Minutes, Zero API Keys)
 
-Set up an isolated Python environment inside this folder:
+Clone the repo straight from GitHub and create a clean Python environment:
 
 ```bash
+git clone https://github.com/djcdevelopment/steppewatch.git
+cd steppewatch
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements-m2.txt
 ```
 
-> **Want a 10-second zero-download dry run first?** Even with just `pip install numpy`, every script works in fast deterministic hash-vector mode (`--force-hash`). Installing `sentence-transformers` + `mlx` + `torch` unlocks real `384-D` `all-MiniLM-L6-v2` semantic embeddings and Metal GPU acceleration on your M2.
+> **Want a 60-second zero-download dry run first?** Skip `requirements-m2.txt`, run just `pip install numpy`, and pass `--force-hash` (`python3 scripts/01_see_the_math_m2.py --force-hash --repo .`). Installing `requirements-m2.txt` unlocks real `384-D` `all-MiniLM-L6-v2` semantic embeddings and Apple `MLX` Metal GPU acceleration on your M2.
+>
+> **Prefer to let Claude Code / Codex / Hermes set it up and explain the output?** Paste this into your agent:  
+> *"Clone `https://github.com/djcdevelopment/steppewatch.git`, read `AGENTS.md`, run `python3 scripts/self_tap.py --repo .`, and walk me through what my local hardware can do."*
 
 Run the benchmark against any real git repo on your Mac:
 
