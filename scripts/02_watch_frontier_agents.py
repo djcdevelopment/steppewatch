@@ -240,9 +240,10 @@ def evaluate_once(
     explicit_intent: Optional[str],
     jepa_ckpt: Optional[str],
     last_seen_lines: Dict[str, int],
-) -> int:
+    json_mode: bool = False,
+) -> List[Dict[str, Any]]:
     """Evaluate all target transcripts once and append new residual episodes."""
-    alerts = 0
+    results: List[Dict[str, Any]] = []
     episodes_path.parent.mkdir(parents=True, exist_ok=True)
     for source, path in targets:
         parsed = parse_jsonl_transcript(path)
@@ -264,18 +265,32 @@ def evaluate_once(
         with episodes_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(ep) + "\n")
 
-        flag = "ALERT:STALL_OR_LOOP" if thrash["thrash_detected"] else "OK"
-        if thrash["thrash_detected"]:
-            alerts += 1
         delta = ep["assessment_vs_expectations"]["state_surprise_delta"]
         pred_r = ep["local_prediction"]["predicted_stall_risk"]
-        print(
-            f"[{time.strftime('%H:%M:%S')}] [{flag}] ({source}) {path.name} "
-            f"| steps={len(parsed['steps'])} (acks_skipped={parsed['filtered_acks']}) "
-            f"thrash={thrash['thrash_score']:.3f} pred_risk={pred_r:.2f} "
-            f"surprise_delta={delta:.3f} ({thrash['latency_ms']} ms)"
-        )
-    return alerts
+        summary_row = {
+            "source": source,
+            "trace_path": str(path),
+            "steps_observed": len(parsed["steps"]),
+            "filtered_tool_acks": parsed["filtered_acks"],
+            "thrash_detected": bool(thrash["thrash_detected"]),
+            "thrash_score": float(thrash["thrash_score"]),
+            "action": thrash["action"],
+            "predicted_stall_risk": pred_r,
+            "state_surprise_delta": delta,
+            "latency_ms": thrash["latency_ms"],
+            "episode_id": ep["episode_id"],
+        }
+        results.append(summary_row)
+
+        if not json_mode:
+            flag = "ALERT:STALL_OR_LOOP" if thrash["thrash_detected"] else "OK"
+            print(
+                f"[{time.strftime('%H:%M:%S')}] [{flag}] ({source}) {path.name} "
+                f"| steps={len(parsed['steps'])} (acks_skipped={parsed['filtered_acks']}) "
+                f"thrash={thrash['thrash_score']:.3f} pred_risk={pred_r:.2f} "
+                f"surprise_delta={delta:.3f} ({thrash['latency_ms']} ms)"
+            )
+    return results
 
 
 def main() -> int:
@@ -289,28 +304,48 @@ def main() -> int:
     parser.add_argument("--poll-seconds", type=float, default=5.0, help="Polling interval in continuous watch mode")
     parser.add_argument("--max-sessions", type=int, default=6, help="Max auto-discovered sessions to watch")
     parser.add_argument("--once", action="store_true", help="Scan once and exit")
+    parser.add_argument("--json", action="store_true", dest="json_mode", help="Emit machine-readable JSON output for agent self-tap")
     parser.add_argument("--force-hash", action="store_true", help="Use zero-download hash384 embedder")
     args = parser.parse_args()
 
     embedder = LocalEmbedder(force_hash=args.force_hash)
-    print(f"Steppewatch active | embedder={embedder.backend_name} | episodes={args.episodes}")
+    if not args.json_mode:
+        print(f"Steppewatch active | embedder={embedder.backend_name} | episodes={args.episodes}")
 
     last_seen_lines: Dict[str, int] = {}
     while True:
         targets = [("explicit", args.trace)] if args.trace else discover_recent_transcripts(args.max_sessions)
         if not targets:
-            print("No local Claude Code / Codex / Hermes JSONL transcripts found yet (pass --trace to test a file).")
+            if args.json_mode:
+                print(json.dumps({
+                    "schema": "steppewatch-watch-report.v1",
+                    "embedder": embedder.backend_name,
+                    "episodes_path": str(args.episodes),
+                    "alerts_count": 0,
+                    "results": [],
+                }, indent=2))
+            else:
+                print("No local Claude Code / Codex / Hermes JSONL transcripts found yet (pass --trace to test a file).")
             if args.once:
                 return 0
         else:
-            evaluate_once(
+            results = evaluate_once(
                 embedder=embedder,
                 targets=targets,
                 episodes_path=args.episodes,
                 explicit_intent=args.intent,
                 jepa_ckpt=args.jepa_checkpoint,
                 last_seen_lines=last_seen_lines,
+                json_mode=args.json_mode,
             )
+            if args.json_mode:
+                print(json.dumps({
+                    "schema": "steppewatch-watch-report.v1",
+                    "embedder": embedder.backend_name,
+                    "episodes_path": str(args.episodes),
+                    "alerts_count": sum(1 for r in results if r["thrash_detected"]),
+                    "results": results,
+                }, indent=2))
             if args.once:
                 return 0
         time.sleep(max(1.0, args.poll_seconds))
