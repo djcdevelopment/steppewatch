@@ -1,0 +1,12 @@
+# Core math (required — runs immediately even in lightweight hash-vector mode)
+numpy>=1.26.0
+
+# Real 384-D semantic embeddings (all-MiniLM-L6-v2, ~90 MB download once, cached locally)
+sentence-transformers>=3.0.0
+torch>=2.3.0
+
+# Apple Silicon M2 Metal GPU unified-memory acceleration (macOS arm64 only)
+mlx>=0.18.0; sys_platform == "darwin" and platform_machine == "arm64"
+
+# Optional: CoreML / Apple Neural Engine static-shape ONNX benchmarking (macOS arm64)
+onnxruntime>=1.19.0; sys_platform == "darwin" and platform_machine == "arm64"
