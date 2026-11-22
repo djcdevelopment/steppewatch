@@ -35,53 +35,7 @@ At the same time, modern developer machines almost universally ship dedicated lo
 
 This disclosure establishes three coupled architectural mechanisms implemented and empirically benchmarked on November 21, 2026:
 
-```mermaid
-flowchart LR
-    subgraph AGENTS["Active Frontier / Local Agents & Subagents"]
-        A1["Primary Agent (Claude / Codex / Hermes / Local LLM)"]
-        A2["Spawned Subagent Streams (append-only JSONL traces)"]
-    end
-
-    subgraph SLAB["Pinned Zero-Copy Multi-Namespace Slab (0.0 MiB Discrete GPU VRAM)"]
-        M["Quantized Matrix [384 x 262,144] (96.5 MiB, 0 rebinds)"]
-        N1["NS_AST: Code & Doc Symbols"]
-        N2["NS_ONTOLOGY: Certified Rules"]
-        N3["NS_EPISODES: 5-Field Residuals"]
-        N4["NS_TRAJECTORY: Live Step Windows"]
-        M --- N1
-        M --- N2
-        M --- N3
-        M --- N4
-    end
-
-    subgraph LOOP1["Loop 1: Zero-Token Real-Time Supervision"]
-        PRE["Pre-Flight: /size & /classify_regime"]
-        WATCH["In-Flight: /detect_thrash (Stall / Loop / Drift Guard)"]
-        POST["Post-Flight: /prescreen_quotes & Claim Grounding"]
-    end
-
-    subgraph LOOP2["Loop 2: Surprise-Driven JEPA & Rule Learning"]
-        EP["5-Field Residual Store (s_t, intent, s_hat, s_next, delta)"]
-        TRAIN["Tiny JEPA MLP Predictor Update (CPU / Unified Memory)"]
-        GATE["Human / Frontier Certification Gate -> NS_ONTOLOGY"]
-    end
-
-    A1 -->|"Raw Intent"| PRE
-    A2 -->|"Sliding Window (W=4..6)"| WATCH
-    A1 -->|"Draft Claims"| POST
-    PRE <-->|"Batched Q>=8 MatMul"| M
-    WATCH <-->|"Batched Q>=8 MatMul"| M
-    POST <-->|"Batched Q>=8 MatMul"| M
-    WATCH -->|"Alert / Early Abort"| A2
-    POST -->|"Contradictions & Verbatim Anchors"| A1
-    PRE --> EP
-    WATCH --> EP
-    POST --> EP
-    EP -->|"High-Surprise Pairs (Delta)"| TRAIN
-    TRAIN -.->|"Improved Prior Predictions"| PRE
-    EP -->|"Repeated Failure Residuals"| GATE
-    GATE -->|"Certified Rules Only"| N2
-```
+![Steppewatch Three-Phase Supervision Pipeline, Pinned INT8 Slab, and NVIDIA auto-ontology Interop](docs/architecture/steppewatch-slab-and-residuals.svg)
 
 ### Claim 1 — Single Pinned Zero-Copy Multi-Namespace Quantized Slab (`[D, N]`)
 Instead of maintaining separate vector databases or firing serial single-vector similarity calls (`Q=1`), the client accelerator allocates one fixed, pinned zero-copy matrix `W ∈ INT8^{384 × 262,144}` paired with per-column FP16 dequantization scales `s_col ∈ FP16^{1 × 262,144}` (`96.5 MiB` total).

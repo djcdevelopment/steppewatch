@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560" role="img" aria-labelledby="p-title p-desc">
+  <title id="p-title">Steppewatch Three-Phase Supervision and NVIDIA auto-ontology Interop</title>
+  <desc id="p-desc">Three-phase zero-token supervision pipeline (pre-flight sizing, in-flight semantic thrash watchdog, post-flight claim grounding) backed by a single pinned INT8 slab and two-way NVIDIA auto-ontology certification loop.</desc>
+
+  <defs>
+    <pattern id="pgrid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#162033" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="pbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="100%" stop-color="#060e20"/>
+    </linearGradient>
+    <marker id="paCyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#22d3ee"/>
+    </marker>
+    <marker id="paEmerald" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#34d399"/>
+    </marker>
+    <marker id="paAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#fbbf24"/>
+    </marker>
+    <marker id="paViolet" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#a78bfa"/>
+    </marker>
+  </defs>
+
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .title { font-size: 15px; font-weight: 700; fill: #f8fafc; letter-spacing: 0.3px; }
+    .kicker { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .h3 { font-size: 13.5px; font-weight: 700; fill: #f8fafc; }
+    .sub { font-size: 11px; fill: #94a3b8; }
+    .val { font-size: 11.5px; font-weight: 600; fill: #e2e8f0; }
+    .edge { font-size: 10.5px; font-weight: 600; fill: #cbd5e1; }
+  </style>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1200" height="560" rx="14" fill="url(#pbg)"/>
+  <rect x="0" y="0" width="1200" height="560" rx="14" fill="url(#pgrid)" opacity="0.6"/>
+  <rect x="1" y="1" width="1198" height="558" rx="13" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <rect x="20" y="16" width="1160" height="44" rx="9" fill="#0b1326" stroke="#1e293b"/>
+  <text x="38" y="43" class="title">THREE-PHASE SUPERVISION PIPELINE · PINNED INT8 SLAB · NVIDIA AUTO-ONTOLOGY INTEROP</text>
+  <text x="1162" y="42" text-anchor="end" class="mono sub" fill="#a78bfa">PAPER.md §2–§5</text>
+
+  <!-- ===================================================================== -->
+  <!-- TOP ROW: THREE-PHASE ZERO-TOKEN SUPERVISION                           -->
+  <!-- ===================================================================== -->
+  <!-- Phase 1: Pre-Flight -->
+  <rect x="28" y="80" width="340" height="122" rx="10" fill="#082032" stroke="#22d3ee" stroke-width="1.4"/>
+  <text x="46" y="104" class="kicker" fill="#22d3ee">PHASE 1 · PRE-FLIGHT GATE</text>
+  <text x="46" y="126" class="h3">/size &amp; /classify_regime</text>
+  <text x="46" y="146" class="sub">Predicts output budget &amp; safe slicing mode</text>
+  <text x="46" y="164" class="sub">Records pre-outcome JEPA prediction (ŝ_next, r̂)</text>
+  <text x="46" y="186" class="mono val" fill="#67e8f9">0.37 – 22.1 ms · 0 LLM tokens</text>
+
+  <!-- Arrow Phase 1 -> Phase 2 -->
+  <line x1="368" y1="141" x2="424" y2="141" stroke="#22d3ee" stroke-width="2" marker-end="url(#paCyan)"/>
+
+  <!-- Phase 2: In-Flight -->
+  <rect x="430" y="80" width="340" height="122" rx="10" fill="#062922" stroke="#34d399" stroke-width="1.4"/>
+  <text x="448" y="104" class="kicker" fill="#34d399">PHASE 2 · IN-FLIGHT WATCHDOG</text>
+  <text x="448" y="126" class="h3">/detect_thrash (W = 3..6 steps)</text>
+  <text x="448" y="146" class="sub">Cosine oscillation + code-target growth + ack filter</text>
+  <text x="448" y="164" class="sub">Protects advancing debug; flags polite stall loops</text>
+  <text x="448" y="186" class="mono val" fill="#6ee7b7">26.6 – 27.7 ms · 0.0000 vs. 0.9278</text>
+
+  <!-- Arrow Phase 2 -> Phase 3 -->
+  <line x1="770" y1="141" x2="826" y2="141" stroke="#34d399" stroke-width="2" marker-end="url(#paEmerald)"/>
+
+  <!-- Phase 3: Post-Flight -->
+  <rect x="832" y="80" width="340" height="122" rx="10" fill="#171430" stroke="#a78bfa" stroke-width="1.4"/>
+  <text x="850" y="104" class="kicker" fill="#c4b5fd">PHASE 3 · POST-FLIGHT GROUNDING</text>
+  <text x="850" y="126" class="h3">/prescreen_quotes &amp; /batch_slab_route</text>
+  <text x="850" y="146" class="sub">Checks draft claims vs. live code + certified rules</text>
+  <text x="850" y="164" class="sub">Flags hallucinated absences &amp; displaced line spans</text>
+  <text x="850" y="186" class="mono val" fill="#ddd6fe">34 – 75 ms · 3/3 errors · 21/26 line drifts</text>
+
+  <!-- Vertical Connectors from Phases to Central Slab -->
+  <line x1="198" y1="202" x2="198" y2="250" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#paCyan)"/>
+  <line x1="600" y1="202" x2="600" y2="250" stroke="#34d399" stroke-width="1.8" marker-end="url(#paEmerald)"/>
+  <line x1="1002" y1="202" x2="1002" y2="250" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#paViolet)"/>
+
+  <!-- ===================================================================== -->
+  <!-- MIDDLE ROW: PINNED ZERO-COPY INT8 SLAB                                -->
+  <!-- ===================================================================== -->
+  <rect x="28" y="256" width="1144" height="114" rx="11" fill="#120f29" stroke="#a78bfa" stroke-width="1.6"/>
+  <text x="48" y="281" class="kicker" fill="#c4b5fd">SHARED ZERO-COPY QUANTIZED MATRIX SLAB · S = Q · (W_INT8 ⊙ s_col) · 96.5 MiB · 0 REBINDS · 0.0 MiB DISCRETE GPU VRAM</text>
+
+  <!-- Five Distinct Partitions (including Proof B Lesson: Separate NS_LINES) -->
+  <rect x="46" y="296" width="208" height="58" rx="7" fill="#0d1b33" stroke="#38bdf8" stroke-width="1.1"/>
+  <text x="58" y="318" class="mono val" fill="#38bdf8">NS_AST (Symbols)</text>
+  <text x="58" y="338" class="sub">Code + Markdown ## sections</text>
+
+  <rect x="268" y="296" width="212" height="58" rx="7" fill="#0f202c" stroke="#22d3ee" stroke-width="1.1"/>
+  <text x="280" y="318" class="mono val" fill="#67e8f9">NS_LINES (Isolated)</text>
+  <text x="280" y="338" class="sub">Line anchors (Proof B lesson)</text>
+
+  <rect x="494" y="296" width="212" height="58" rx="7" fill="#231a0c" stroke="#fbbf24" stroke-width="1.1"/>
+  <text x="506" y="318" class="mono val" fill="#fbbf24">NS_ONTOLOGY</text>
+  <text x="506" y="338" class="sub">Human-certified contract rules</text>
+
+  <rect x="720" y="296" width="212" height="58" rx="7" fill="#082420" stroke="#34d399" stroke-width="1.1"/>
+  <text x="732" y="318" class="mono val" fill="#34d399">NS_TRAJECTORY</text>
+  <text x="732" y="338" class="sub">Batched live worker steps</text>
+
+  <rect x="946" y="296" width="208" height="58" rx="7" fill="#201336" stroke="#c084fc" stroke-width="1.1"/>
+  <text x="958" y="318" class="mono val" fill="#d8b4fe">NS_EPISODES</text>
+  <text x="958" y="338" class="sub">5-field residual history</text>
+
+  <!-- ===================================================================== -->
+  <!-- BOTTOM ROW: RESIDUAL JEPA LOOP + NVIDIA AUTO-ONTOLOGY INTEROP         -->
+  <!-- ===================================================================== -->
+  <!-- Down arrow from NS_EPISODES -> JEPA Residual Store -->
+  <line x1="1050" y1="370" x2="1050" y2="416" stroke="#c084fc" stroke-width="2" marker-end="url(#paViolet)"/>
+
+  <!-- Left Bottom Card: NVIDIA auto-ontology -->
+  <rect x="28" y="422" width="490" height="112" rx="10" fill="#1f1708" stroke="#fbbf24" stroke-width="1.4"/>
+  <text x="46" y="446" class="kicker" fill="#fbbf24">OPEN ECOSYSTEM · NVIDIA/auto-ontology (APACHE 2.0)</text>
+  <text x="46" y="469" class="h3">Human-Certified Semantic Governance &amp; Discovery</text>
+  <text x="46" y="490" class="sub">1. Export certified catalog rules -&gt; NS_ONTOLOGY (zero-token checks)</text>
+  <text x="46" y="510" class="sub">2. Receive recurring high-surprise residual traps for human approval</text>
+
+  <!-- Up arrow NVIDIA auto-ontology -> NS_ONTOLOGY -->
+  <path d="M 460 422 L 460 396 L 600 396 L 600 376" fill="none" stroke="#fbbf24" stroke-width="2" marker-end="url(#paAmber)"/>
+  <rect x="478" y="384" width="110" height="22" rx="5" fill="#1f1708" stroke="#b45309"/>
+  <text x="533" y="399" text-anchor="middle" class="mono edge" fill="#fde68a">Certified rules</text>
+
+  <!-- Right Bottom Card: JEPA Residual Training -->
+  <rect x="650" y="422" width="522" height="112" rx="10" fill="#13102b" stroke="#c084fc" stroke-width="1.4"/>
+  <text x="668" y="446" class="kicker" fill="#d8b4fe">CLOSED-LOOP LEARNING · 5-FIELD RESIDUAL EPISODES</text>
+  <text x="668" y="469" class="h3">Surprise-Prioritized Local JEPA Predictor (CPU / M2 UMA)</text>
+  <text x="668" y="490" class="mono sub" fill="#cbd5e1">f_θ(z_curr, z_intent) -&gt; (ẑ_end, r̂_risk)   |   Δ = 1 - cos(ẑ_end, z_end)</text>
+  <text x="668" y="510" class="sub">Real-time NPU inference/harvesting stays isolated from &lt;1 s MLP updates</text>
+
+  <!-- Connecting arrow JEPA -> NVIDIA auto-ontology (Candidate rule drafts) -->
+  <line x1="650" y1="478" x2="524" y2="478" stroke="#fbbf24" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#paAmber)"/>
+  <rect x="532" y="454" width="110" height="20" rx="5" fill="#1b1407" stroke="#92400e"/>
+  <text x="587" y="468" text-anchor="middle" class="edge" fill="#fde68a">Draft rule traps</text>
+</svg>

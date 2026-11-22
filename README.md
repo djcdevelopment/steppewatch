@@ -27,13 +27,7 @@ Hiring *another* frontier LLM to poll and babysit your subagents doubles token b
 
 **Steppewatch** turns that idle local silicon into a dual-loop lookout at **`$0.00` extra API cost**:
 
-```mermaid
-flowchart LR
-    A["Remote Frontier Agents & Subagents<br/>(Claude Code · Codex CLI · Hermes)"] -->|"Append-only local JSONL traces<br/>(read-only, zero API intercept)"| W["Steppewatch Local Silicon<br/>(NPU / Apple M-Series · 0.0 MiB GPU VRAM)"]
-    W -->|"Loop 1: Real-Time Supervision<br/>(milliseconds, $0 API tokens)"| G["Catch Silent Stall Loops<br/>Ground Claims vs. Codebase<br/>Check Certified Rules"]
-    W -->|"Loop 2: 5-Field Residual Episodes<br/>(s_t, intent, s_hat, s_next, Delta)"| J["Train Tiny Local JEPA<br/>(Predict Risk & Surprise)<br/>Propose Rules for Human Review"]
-    J -.->|"Sharper Priors Next Run"| W
-```
+![Steppewatch Dual-Loop Client-Silicon Supervision and JEPA Residual Architecture](docs/architecture/steppewatch-dual-loop.svg)
 
 ---
 
