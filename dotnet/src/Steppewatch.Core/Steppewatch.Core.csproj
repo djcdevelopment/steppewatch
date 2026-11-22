@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Steppewatch.Core</AssemblyName>
+    <RootNamespace>Steppewatch.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

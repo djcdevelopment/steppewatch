@@ -7,3 +7,7 @@ episodes/
 checkpoints/
 receipts/
 *.npz
+**/bin/
+**/obj/
+publish/
+
