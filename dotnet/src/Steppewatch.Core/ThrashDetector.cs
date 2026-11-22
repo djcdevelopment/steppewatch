@@ -107,6 +107,14 @@ public static partial class ThrashDetector
         return targets;
     }
 
+    public static string NormalizeStep(string step)
+    {
+        string trimmed = (step ?? string.Empty).Trim();
+        if (trimmed.Length > 600) trimmed = trimmed[..600];
+        string stripped = StepPrefixRe().Replace(trimmed, string.Empty).Trim();
+        return stripped.Length > 0 ? stripped : trimmed;
+    }
+
     public static ThrashResult Detect(
         ITextEmbedder embedder,
         IReadOnlyList<string> steps,
@@ -114,12 +122,12 @@ public static partial class ThrashDetector
         double threshold = DefaultThreshold)
     {
         long t0 = Stopwatch.GetTimestamp();
-        var rawWindow = steps.Where(s => !string.IsNullOrWhiteSpace(s))
-            .Select(s => { string t = s.Trim(); return t.Length > 600 ? t[..600] : t; })
+        var normWindow = steps.Where(s => !string.IsNullOrWhiteSpace(s))
             .TakeLast(6)
+            .Select(NormalizeStep)
             .ToList();
 
-        if (rawWindow.Count < 3)
+        if (normWindow.Count < 3)
         {
             return new ThrashResult(
                 traceId, false, 0.0, threshold, "continue",
@@ -128,11 +136,28 @@ public static partial class ThrashDetector
                 embedder.BackendName);
         }
 
-        var normWindow = rawWindow
-            .Select(s => { string r = StepPrefixRe().Replace(s, string.Empty).Trim(); return r.Length > 0 ? r : s; })
-            .ToList();
-
         float[][] embs = embedder.EncodeBatch(normWindow);
+        return ScorePreEmbeddedWindow(normWindow, embs, embedder.BackendName, traceId, threshold, t0);
+    }
+
+    public static ThrashResult ScorePreEmbeddedWindow(
+        IReadOnlyList<string> normWindow,
+        IReadOnlyList<float[]> embs,
+        string backendName,
+        string traceId = "trace-0",
+        double threshold = DefaultThreshold,
+        long? startTimestamp = null)
+    {
+        long t0 = startTimestamp ?? Stopwatch.GetTimestamp();
+        if (normWindow.Count < 3 || embs.Count != normWindow.Count)
+        {
+            return new ThrashResult(
+                traceId, false, 0.0, threshold, "continue",
+                0, 0, 0, 0, 0, 0, false, 1.0,
+                Math.Round(Stopwatch.GetElapsedTime(t0).TotalMilliseconds, 2),
+                backendName);
+        }
+
         var adj = new List<double>();
         var osc = new List<double>();
         var upper = new List<double>();
@@ -185,7 +210,7 @@ public static partial class ThrashDetector
             ? Math.Min(1.0, (tailNew + 2 * fixSteps) / 6.0)
             : Math.Min(1.0, tailNew / Math.Max(3.0, normWindow.Count * 1.5));
 
-        bool isHash = embedder.BackendName.StartsWith("hash384", StringComparison.OrdinalIgnoreCase);
+        bool isHash = backendName.StartsWith("hash384", StringComparison.OrdinalIgnoreCase);
         double cosFloor = isHash ? 0.36 : 0.56;
         double silentFloor = isHash ? 0.38 : 0.58;
 
@@ -211,6 +236,6 @@ public static partial class ThrashDetector
             Math.Round(rawErrRatio, 4), Math.Round(stagRatio, 4),
             tailNew, productive, Math.Round(progress, 4),
             Math.Round(Stopwatch.GetElapsedTime(t0).TotalMilliseconds, 2),
-            embedder.BackendName);
+            backendName);
     }
 }

@@ -33,10 +33,13 @@ Copy `publish/win-x64/steppewatch.exe` to your Windows 10 i5 laptop and open Pow
 # 2. X-Ray your own local Claude Code / Codex / Hermes transcripts (100% read-only)
 .\steppewatch.exe xray --max-sessions 25 --export-episodes .\episodes\i5_history.jsonl
 
-# 3. Train a tiny local JEPA predictor in milliseconds (use --demo-synthetic if no logs yet)
-.\steppewatch.exe train --demo-synthetic --out .\checkpoints\my_i5_jepa.json
+# 3. Train a tiny local JEPA predictor in milliseconds (use --episodes .\episodes\i5_history.jsonl once you have >= 6 runs, or --demo-synthetic)
+.\steppewatch.exe train --episodes .\episodes\i5_history.jsonl --out .\checkpoints\my_i5_jepa.json
 
-# 4. One-command JSON probe for Claude Code / Codex / Hermes self-tap on Windows
+# 4. Live-watch active sessions using your newly trained local JEPA checkpoint (Ctrl+C to stop)
+.\steppewatch.exe watch --follow --jepa-checkpoint .\checkpoints\my_i5_jepa.json
+
+# 5. One-command JSON probe for Claude Code / Codex / Hermes self-tap on Windows
 .\steppewatch.exe self-tap --repo C:\path\to\any\repo
 ```
 
@@ -68,17 +71,21 @@ dotnet publish dotnet/src/Steppewatch.Onnx.Cli/Steppewatch.Onnx.Cli.csproj \
   -o publish/win-x64-onnx
 ```
 
-Download the official Apache-2.0 `Xenova/all-MiniLM-L6-v2` ONNX weights (`model_quantized.onnx` `22 MiB` for CPU `INT8`, or `model.onnx` / `model_fp16.onnx` for DirectML) plus `vocab.txt`, then run in PowerShell:
+Run in PowerShell — `--download-model` auto-fetches Apache-2.0 `Xenova/all-MiniLM-L6-v2` (`21.9 MiB` `INT8` + `vocab.txt`) once into `%LOCALAPPDATA%\steppewatch\models\all-MiniLM-L6-v2\`, so subsequent runs need zero flags:
 
 ```powershell
-# Recommended fastest neural path on i5-12600H: 22 MiB INT8 ONNX on CPU (~3.2 ms/query, ~734 texts/sec)
-.\steppewatch-onnx.exe neural-bench --model .\model_quantized.onnx --vocab .\vocab.txt --provider cpu --repo C:\path\to\any\repo
+# 1. One-command neural X-Ray on your own Claude Code / Codex / Hermes sessions (auto-downloads 22 MiB INT8 model once!)
+.\steppewatch-onnx.exe xray --download-model --max-sessions 25 --export-episodes .\episodes\i5_neural_history.jsonl
 
-# Explicit Intel Iris Xe / AMD / NVIDIA DX12 offload via DirectML (static 64/128 buckets enabled automatically)
-.\steppewatch-onnx.exe neural-bench --model .\model.onnx --vocab .\vocab.txt --provider dml --repo C:\path\to\any\repo
+# 2. Train your neural Tiny JEPA on YOUR real history & live-watch active sessions
+.\steppewatch-onnx.exe train --episodes .\episodes\i5_neural_history.jsonl --out .\checkpoints\i5_neural_jepa.json
+.\steppewatch-onnx.exe watch --follow --jepa-checkpoint .\checkpoints\i5_neural_jepa.json
 
-# Use the exact same neural embedder on every Steppewatch command (xray, watch, train, self-tap)
-.\steppewatch-onnx.exe xray --model .\model_quantized.onnx --vocab .\vocab.txt --max-sessions 25
+# 3. Benchmark neural encoding throughput + zero-overlap paraphrase check + repo claim grounding
+.\steppewatch-onnx.exe neural-bench --repo C:\path\to\any\repo
+
+# 4. Explicit Intel Iris Xe / AMD / NVIDIA DX12 offload via DirectML (static 64/128 buckets enabled automatically)
+.\steppewatch-onnx.exe neural-bench --download-model --model-variant fp32 --provider dml --repo C:\path\to\any\repo
 ```
 
 ### Live Verified Numbers on Dell Precision 3571 (`i5-12600H` + Intel Iris Xe, Win10 Pro 19045)

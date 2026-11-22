@@ -79,12 +79,14 @@ public static class Program
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(receiptPath))!);
         File.WriteAllText(receiptPath, JsonSerializer.Serialize(receipt, PrettyJson));
         Console.WriteLine($"\nSaved receipt -> {receiptPath}");
+        Console.WriteLine("Next -> xray --max-sessions 25 --export-episodes episodes/my_history.jsonl");
         return 0;
     }
 
     private static int RunXRay(ITextEmbedder embedder, string[] args)
     {
         int maxSessions = int.TryParse(GetArg(args, "--max-sessions"), out int m) ? m : 25;
+        int minSteps = int.TryParse(GetArg(args, "--min-steps"), out int ms) ? ms : 4;
         string? exportPath = GetArg(args, "--export-episodes");
         bool jsonMode = HasFlag(args, "--json");
 
@@ -96,13 +98,12 @@ public static class Program
         foreach (var f in files)
         {
             var parsed = TranscriptScanner.ParseJsonl(f.FullPath);
-            if (parsed.Steps.Count < 3) continue;
-            var row = TranscriptScanner.ReplayWindows(embedder, f.Source, f.FullPath, parsed);
-            rows.Add(row);
+            if (parsed.Steps.Count < minSteps) continue;
+            var outcome = TranscriptScanner.ReplayWindowsWithTail(embedder, f.Source, f.FullPath, parsed);
+            rows.Add(outcome.Row);
             if (exportPath is not null)
             {
-                var thrash = ThrashDetector.Detect(embedder, parsed.Steps, Path.GetFileNameWithoutExtension(f.FullPath));
-                episodes.Add(TranscriptScanner.BuildEpisode(embedder, f.Source, f.FullPath, parsed, thrash));
+                episodes.Add(TranscriptScanner.BuildEpisode(embedder, f.Source, f.FullPath, parsed, outcome.TailThrash));
             }
         }
 
@@ -126,14 +127,35 @@ public static class Program
 
         if (jsonMode) { Console.WriteLine(JsonSerializer.Serialize(payload, PrettyJson)); return 0; }
 
-        Console.WriteLine($"=== Steppewatch .NET X-Ray ({rows.Count} sessions in {payload.ElapsedMs} ms, $0.00 API cost) ===");
+        Console.WriteLine($"=== Steppewatch .NET X-Ray ({rows.Count} sessions in {payload.ElapsedMs} ms, {embedder.BackendName}, $0.00 API cost) ===");
         Console.WriteLine($"Flagged stall/loop runs: {payload.SessionsFlagged} / {rows.Count}");
         foreach (var r in sorted.Take(8))
         {
-            Console.WriteLine($"  [{(r.Flagged ? "FLAGGED" : "OK     ")}] ({r.Source,-15}) {r.Session[..Math.Min(32, r.Session.Length)],-32} | steps={r.Steps,3} max_thrash={r.MaxThrashScore:F3} drift={r.IntentDriftDelta:F3} post_steps={r.PostFlagSteps}");
+            string shortId = Path.GetFileNameWithoutExtension(r.Session);
+            if (shortId.Length > 12) shortId = shortId[..12];
+            string label = $"{r.Source}/{r.Project}";
+            if (label.Length > 28) label = label[..28];
+            Console.WriteLine($"  [{(r.Flagged ? "FLAGGED" : "OK     ")}] ({label,-28}) {shortId,-12} | steps={r.Steps,3} max_thrash={r.MaxThrashScore:F3} drift={r.IntentDriftDelta:F3} post_steps={r.PostFlagSteps}");
+            if (r.Flagged)
+            {
+                Console.WriteLine($"            intent: {r.IntentPreview}");
+                if (!string.IsNullOrEmpty(r.FlaggedStepPreview))
+                {
+                    Console.WriteLine($"            stuck@{r.FirstFlagStep}: {r.FlaggedStepPreview}");
+                }
+            }
         }
 
-        if (exportPath is not null) Console.WriteLine($"\nExported {episodes.Count} episodes -> {exportPath}");
+        if (exportPath is not null)
+        {
+            Console.WriteLine($"\nExported {episodes.Count} episodes -> {exportPath}");
+            Console.WriteLine($"Next -> train --episodes {exportPath} --out checkpoints/my_real_jepa.json");
+        }
+        else if (rows.Count > 0)
+        {
+            Console.WriteLine("\nNext -> re-run with --export-episodes episodes/my_history.jsonl to train your personal local JEPA.");
+        }
+
         return 0;
     }
 
@@ -142,34 +164,65 @@ public static class Program
         string? trace = GetArg(args, "--trace");
         string? intent = GetArg(args, "--intent");
         string episodesPath = GetArg(args, "--episodes") ?? Path.Combine("episodes", "transitions.jsonl");
-        var ckpt = TinyJepaTrainer.LoadCheckpoint(GetArg(args, "--jepa-checkpoint"));
+        string? ckptPath = GetArg(args, "--jepa-checkpoint");
+        var ckpt = TinyJepaTrainer.LoadCheckpoint(ckptPath);
         bool jsonMode = HasFlag(args, "--json");
-
-        var targets = trace is not null
-            ? [new DiscoveredTranscript("explicit", trace, 0, 0)]
-            : TranscriptScanner.DiscoverRecent(6);
+        bool follow = HasFlag(args, "--follow");
+        int intervalSec = int.TryParse(GetArg(args, "--interval"), out int iv) ? Math.Clamp(iv, 1, 300) : 5;
+        int maxPolls = int.TryParse(GetArg(args, "--polls"), out int mp) ? Math.Max(1, mp) : (follow ? int.MaxValue : 1);
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(episodesPath))!);
-        var results = new List<object>();
-        int alerts = 0;
+        var seenStamp = new Dictionary<string, (long Bytes, DateTime Mtime)>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var t in targets)
+        if (follow && !jsonMode)
         {
-            var parsed = TranscriptScanner.ParseJsonl(t.FullPath);
-            var thrash = ThrashDetector.Detect(embedder, parsed.Steps, Path.GetFileNameWithoutExtension(t.FullPath));
-            var ep = TranscriptScanner.BuildEpisode(embedder, t.Source, t.FullPath, parsed, thrash, intent, ckpt);
-            File.AppendAllText(episodesPath, JsonSerializer.Serialize(ep, LineJson) + Environment.NewLine);
-            if (thrash.ThrashDetected) alerts++;
-            results.Add(new { t.Source, t.FullPath, StepsObserved = parsed.Steps.Count, parsed.FilteredAcks, thrash.ThrashDetected, thrash.ThrashScore, thrash.Action, ep.LocalPrediction.PredictedStallRisk, ep.AssessmentVsExpectations.StateSurpriseDelta, thrash.LatencyMs });
-            if (!jsonMode)
-            {
-                Console.WriteLine($"[{(thrash.ThrashDetected ? "ALERT:STALL_OR_LOOP" : "OK")}] ({t.Source}) {Path.GetFileName(t.FullPath)} | steps={parsed.Steps.Count} (acks={parsed.FilteredAcks}) thrash={thrash.ThrashScore:F3} surprise={ep.AssessmentVsExpectations.StateSurpriseDelta:F3} ({thrash.LatencyMs} ms)");
-            }
+            Console.WriteLine($"=== Steppewatch Live Watch ({embedder.BackendName}, {(ckpt is not null ? "JEPA:loaded" : "JEPA:prior")}, interval={intervalSec}s — Ctrl+C to stop) ===");
         }
 
-        if (jsonMode)
+        for (int poll = 0; poll < maxPolls; poll++)
         {
-            Console.WriteLine(JsonSerializer.Serialize(new { Schema = "steppewatch-watch-report.v1", Embedder = embedder.BackendName, AlertsCount = alerts, Results = results }, PrettyJson));
+            var targets = trace is not null
+                ? [new DiscoveredTranscript("explicit", trace, 0, 0)]
+                : TranscriptScanner.DiscoverRecent(6);
+
+            var results = new List<object>();
+            int alerts = 0;
+
+            foreach (var t in targets)
+            {
+                var fi = File.Exists(t.FullPath) ? new FileInfo(t.FullPath) : null;
+                if (follow && fi is not null)
+                {
+                    var stamp = (fi.Length, fi.LastWriteTimeUtc);
+                    if (seenStamp.TryGetValue(t.FullPath, out var prev) && prev == stamp) continue;
+                    seenStamp[t.FullPath] = stamp;
+                }
+
+                var parsed = TranscriptScanner.ParseJsonl(t.FullPath);
+                var thrash = ThrashDetector.Detect(embedder, parsed.Steps, Path.GetFileNameWithoutExtension(t.FullPath));
+                var ep = TranscriptScanner.BuildEpisode(embedder, t.Source, t.FullPath, parsed, thrash, intent, ckpt);
+                File.AppendAllText(episodesPath, JsonSerializer.Serialize(ep, LineJson) + Environment.NewLine);
+                if (thrash.ThrashDetected) alerts++;
+                results.Add(new { t.Source, Project = TranscriptScanner.InferProjectLabel(t.Source, t.FullPath), t.FullPath, StepsObserved = parsed.Steps.Count, parsed.FilteredAcks, thrash.ThrashDetected, thrash.ThrashScore, thrash.Action, PredictionSource = ep.LocalPrediction.Source, ep.LocalPrediction.PredictedStallRisk, ep.AssessmentVsExpectations.StateSurpriseDelta, thrash.LatencyMs });
+                if (!jsonMode)
+                {
+                    string proj = TranscriptScanner.InferProjectLabel(t.Source, t.FullPath);
+                    string shortName = Path.GetFileNameWithoutExtension(t.FullPath);
+                    if (shortName.Length > 12) shortName = shortName[..12];
+                    string jepaTag = ckpt is not null ? $"jepa_risk={ep.LocalPrediction.PredictedStallRisk:F2}" : $"prior_risk={ep.LocalPrediction.PredictedStallRisk:F2}";
+                    Console.WriteLine($"[{(thrash.ThrashDetected ? "ALERT:STALL_OR_LOOP" : "OK")}] ({t.Source}/{proj}) {shortName} | steps={parsed.Steps.Count} (acks={parsed.FilteredAcks}) thrash={thrash.ThrashScore:F3} {jepaTag} surprise={ep.AssessmentVsExpectations.StateSurpriseDelta:F3} ({thrash.LatencyMs} ms)");
+                }
+            }
+
+            if (jsonMode)
+            {
+                Console.WriteLine(JsonSerializer.Serialize(new { Schema = "steppewatch-watch-report.v1", Embedder = embedder.BackendName, JepaLoaded = ckpt is not null, AlertsCount = alerts, Results = results }, PrettyJson));
+            }
+
+            if (poll + 1 < maxPolls)
+            {
+                Thread.Sleep(intervalSec * 1000);
+            }
         }
 
         return 0;
@@ -195,6 +248,7 @@ public static class Program
         Console.WriteLine($"Val BEFORE  : state_surprise={rep.ValBefore.StateSurprise:F4} | risk_mae={rep.ValBefore.RiskMae:F4}");
         Console.WriteLine($"Val AFTER   : state_surprise={rep.ValAfter.StateSurprise:F4} | risk_mae={rep.ValAfter.RiskMae:F4}");
         Console.WriteLine($"Saved       -> {outPath}");
+        Console.WriteLine($"Next -> watch --follow --jepa-checkpoint {outPath}");
         return 0;
     }
 

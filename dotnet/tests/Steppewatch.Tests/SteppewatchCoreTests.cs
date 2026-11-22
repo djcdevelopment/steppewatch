@@ -158,4 +158,56 @@ public sealed class SteppewatchCoreTests
             if (File.Exists(ckptPath)) File.Delete(ckptPath);
         }
     }
+
+    [Fact]
+    public void TranscriptScanner_TailSafeParsePreservesOpeningIntentOnLargeFile()
+    {
+        string tmp = Path.Combine(Path.GetTempPath(), $"sw-big-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            using (var sw = new StreamWriter(tmp))
+            {
+                sw.WriteLine("""{"type":"user","message":{"content":"INTENT: Optimize checkout webhook retry backoff and pass tests"}}""");
+                string filler = new string('x', 900);
+                for (int i = 0; i < 400; i++)
+                {
+                    sw.WriteLine($"{{\"type\":\"assistant\",\"message\":{{\"content\":\"Inspecting module_{i}.cs {filler}\"}}}}");
+                }
+
+                sw.WriteLine("""{"type":"assistant","message":{"content":"Edited webhook_client.cs and verified all 12 tests passed exit code 0."}}""");
+            }
+
+            // Force tail seek with tiny 64 KiB cap (file is ~380 KiB)
+            var parsed = TranscriptScanner.ParseJsonl(tmp, maxLines: 50, maxTailBytes: 64 * 1024);
+            Assert.Contains("Optimize checkout webhook retry backoff", parsed.Intent);
+            Assert.True(parsed.Steps.Count <= 50 && parsed.Steps.Count >= 10);
+            Assert.Contains("webhook_client.cs", parsed.Steps[^1]);
+        }
+        finally
+        {
+            if (File.Exists(tmp)) File.Delete(tmp);
+        }
+    }
+
+    [Fact]
+    public void ReplayWindows_PreEmbeddedMatchesDirectThrashScore()
+    {
+        var embedder = new Hash384Embedder();
+        var steps = new List<string>
+        {
+            "Step 1: Let me carefully review the webhook integration requirements again to make sure I have the full picture before proposing an edit.",
+            "Step 2: I will re-examine the webhook integration plan and verify how the retry timeout should be structured before making any code edits.",
+            "Step 3: Let me double-check the webhook integration architecture one more time so the proposed design aligns with existing client boundaries.",
+            "Step 4: Before writing any code, I want to carefully reconsider the webhook integration approach and review the timeout constraints again.",
+            "Step 5: I am revisiting the webhook integration design notes again to confirm the retry timeout details before deciding on the next edit."
+        };
+        var parsed = new ParsedTranscript("Fix webhook retry timeout", steps, [], 5, 0);
+        var outcome = TranscriptScanner.ReplayWindowsWithTail(embedder, "claude_main", @"C:\Users\dev\.claude\projects\C--work-demo\abc12345.jsonl", parsed);
+        var direct = ThrashDetector.Detect(embedder, steps, "abc12345");
+
+        Assert.True(outcome.Row.Flagged);
+        Assert.Equal("work-demo", outcome.Row.Project);
+        Assert.Equal(direct.ThrashScore, outcome.TailThrash.ThrashScore);
+        Assert.False(string.IsNullOrWhiteSpace(outcome.Row.FlaggedStepPreview));
+    }
 }

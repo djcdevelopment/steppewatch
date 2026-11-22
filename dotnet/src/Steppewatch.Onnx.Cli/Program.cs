@@ -24,6 +24,8 @@ internal static class Program
         string cmd = args[0].ToLowerInvariant();
         string? modelPath = GetArg(args, "--model");
         string? vocabPath = GetArg(args, "--vocab");
+        bool downloadRequested = HasFlag(args, "--download-model");
+        string variant = (GetArg(args, "--model-variant") ?? "int8").ToLowerInvariant();
         string providerRaw = (GetArg(args, "--provider") ?? "auto").ToLowerInvariant();
         int maxLen = int.TryParse(GetArg(args, "--max-len"), out int ml) ? ml : 128;
         int batchSize = int.TryParse(GetArg(args, "--batch-size"), out int bs) ? bs : 16;
@@ -31,8 +33,12 @@ internal static class Program
 
         if (string.IsNullOrWhiteSpace(modelPath))
         {
-            Console.Error.WriteLine("Missing required --model <path/to/model.onnx>.");
-            return PrintUsage(1);
+            (modelPath, vocabPath) = ResolveOrDownloadDefaultModel(variant, downloadRequested);
+            if (modelPath is null)
+            {
+                Console.Error.WriteLine("No --model specified and no cached model found. Pass --download-model to auto-fetch Apache-2.0 all-MiniLM-L6-v2 (~22 MiB INT8), or specify --model <path.onnx>.");
+                return PrintUsage(1);
+            }
         }
 
         vocabPath ??= Path.Combine(Path.GetDirectoryName(Path.GetFullPath(modelPath))!, "vocab.txt");
@@ -192,12 +198,75 @@ internal static class Program
         "Step 5: I am revisiting the webhook integration design notes again to confirm the retry timeout details before deciding on the next edit."
     ];
 
+    private static (string? ModelPath, string? VocabPath) ResolveOrDownloadDefaultModel(string variant, bool allowDownload)
+    {
+        string modelFile = variant switch
+        {
+            "int8" or "quantized" => "model_quantized.onnx",
+            "fp16" => "model_fp16.onnx",
+            "fp32" => "model.onnx",
+            _ => throw new ArgumentException($"Unsupported --model-variant '{variant}'. Use int8, fp16, or fp32.")
+        };
+
+        string cacheRoot = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(cacheRoot))
+        {
+            cacheRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
+        }
+
+        string dir = Path.Combine(cacheRoot, "steppewatch", "models", "all-MiniLM-L6-v2");
+        string modelPath = Path.Combine(dir, modelFile);
+        string vocabPath = Path.Combine(dir, "vocab.txt");
+
+        if (File.Exists(modelPath) && File.Exists(vocabPath))
+        {
+            return (modelPath, vocabPath);
+        }
+
+        if (!allowDownload)
+        {
+            return (null, null);
+        }
+
+        Directory.CreateDirectory(dir);
+        const string baseUrl = "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main";
+        using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
+        if (!File.Exists(vocabPath))
+        {
+            Console.Error.WriteLine($"Downloading vocab.txt -> {vocabPath}");
+            DownloadFileSync(http, $"{baseUrl}/vocab.txt", vocabPath);
+        }
+
+        if (!File.Exists(modelPath))
+        {
+            Console.Error.WriteLine($"Downloading {modelFile} -> {modelPath}");
+            DownloadFileSync(http, $"{baseUrl}/onnx/{modelFile}", modelPath);
+        }
+
+        return (modelPath, vocabPath);
+    }
+
+    private static void DownloadFileSync(HttpClient http, string url, string destination)
+    {
+        string tmp = destination + ".part";
+        using HttpResponseMessage resp = http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
+        resp.EnsureSuccessStatusCode();
+        using Stream input = resp.Content.ReadAsStream();
+        using (var output = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            input.CopyTo(output);
+        }
+
+        File.Move(tmp, destination, overwrite: true);
+    }
+
     private static string[] StripOnnxFlags(string[] args)
     {
         var flagsWithValue = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "--model", "--vocab", "--provider", "--max-len", "--batch-size", "--device"
+            "--model", "--vocab", "--provider", "--max-len", "--batch-size", "--device", "--model-variant"
         };
+        var boolFlags = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "--download-model" };
         var kept = new List<string>(args.Length);
         for (int i = 0; i < args.Length; i++)
         {
@@ -207,11 +276,18 @@ internal static class Program
                 continue;
             }
 
+            if (boolFlags.Contains(args[i]))
+            {
+                continue;
+            }
+
             kept.Add(args[i]);
         }
 
         return kept.ToArray();
     }
+
+    private static bool HasFlag(string[] args, string flag) => args.Contains(flag, StringComparer.OrdinalIgnoreCase);
 
     private static string? GetArg(string[] args, string flag)
     {
@@ -229,7 +305,7 @@ internal static class Program
     private static int PrintUsage(int code = 0)
     {
         Console.WriteLine("Steppewatch ONNX (.NET 10 Optional Neural all-MiniLM-L6-v2 — DirectML / CPU)");
-        Console.WriteLine("Usage: steppewatch-onnx <neural-bench | bench | xray | watch | train | self-tap> --model <model.onnx> [--vocab <vocab.txt>] [--provider auto|dml|cpu] [--max-len 128]");
+        Console.WriteLine("Usage: steppewatch-onnx <neural-bench | bench | xray | watch | train | self-tap> [--download-model] [--model <model.onnx>] [--vocab <vocab.txt>] [--provider auto|dml|cpu] [--max-len 128]");
         return code;
     }
 }

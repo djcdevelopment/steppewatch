@@ -67,6 +67,24 @@ Already live inside Claude Code, Codex CLI, or Hermes? Open **[`WORKSHOP.md`](WO
 
 Everything runs **read-only on local transcripts**, touches **zero API keys**, and gives you clean JSON output ([`AGENTS.md`](AGENTS.md)).
 
+### Option D — Windows 10 / Everyday Laptop (`.NET 10` Native SIMD, Zero Python, Zero NPU/dGPU Required)
+Running Windows 10 on an everyday Intel/AMD laptop (no Python `venv`, no `pip`, no discrete GPU needed)? Use the native `.NET 10` CLI (`dotnet/`) directly in PowerShell:
+```powershell
+git clone https://github.com/djcdevelopment/steppewatch.git
+cd steppewatch
+
+# 1. Zero-dependency SIMD benchmark (96.5 MiB INT8 slab vs 384 MiB FP32) + thrash + repo grounding
+dotnet run --project dotnet/src/Steppewatch.Cli/Steppewatch.Cli.csproj -c Release -- bench --repo .
+
+# 2. X-Ray your own Claude Code / Codex / Hermes sessions (shows project, intent & stuck-step quotes)
+dotnet run --project dotnet/src/Steppewatch.Cli/Steppewatch.Cli.csproj -c Release -- xray --export-episodes episodes/my_history.jsonl
+
+# 3. Train your personal Tiny JEPA in < 1 second & live-watch active sessions
+dotnet run --project dotnet/src/Steppewatch.Cli/Steppewatch.Cli.csproj -c Release -- train --episodes episodes/my_history.jsonl --out checkpoints/my_jepa.json
+dotnet run --project dotnet/src/Steppewatch.Cli/Steppewatch.Cli.csproj -c Release -- watch --follow --jepa-checkpoint checkpoints/my_jepa.json
+```
+👉 Want true 384-D neural **`all-MiniLM-L6-v2`** embeddings (`22 MiB` `INT8` CPU or Intel Iris Xe DirectML) with one-command auto-download (`--download-model`) or a single-file `.exe`? Follow **[`COOKBOOK-WIN10-I5.md`](COOKBOOK-WIN10-I5.md)**.
+
 ---
 
 ## How to Read Your Own Numbers (No ML PhD Required)

@@ -27,9 +27,12 @@ public sealed record EpisodeEndState(string Summary, List<string> TouchedFiles, 
 public sealed record EpisodeAssessment(double StateSurpriseDelta, double RiskPredictionError, double ActualRiskTarget, string? HumanLabel);
 
 public sealed record SessionXRayRow(
-    string Source, string Session, int Steps, int AcksFiltered,
+    string Source, string Project, string Session, int Steps, int AcksFiltered,
     bool Flagged, double MaxThrashScore, int? FirstFlagStep,
-    int PostFlagSteps, int PostFlagEstTokens, double IntentDriftDelta, int TouchedFilesCount);
+    int PostFlagSteps, int PostFlagEstTokens, double IntentDriftDelta, int TouchedFilesCount,
+    string IntentPreview, string? FlaggedStepPreview);
+
+public sealed record SessionXRayOutcome(SessionXRayRow Row, ThrashResult TailThrash);
 
 public static partial class TranscriptScanner
 {
@@ -70,13 +73,15 @@ public static partial class TranscriptScanner
         return hits.OrderByDescending(h => h.Mtime).Take(maxFiles).Select(h => h.Item).ToList();
     }
 
-    public static ParsedTranscript ParseJsonl(string path, int maxLines = 500)
+    public static ParsedTranscript ParseJsonl(string path, int maxLines = 500, long maxTailBytes = 2 * 1024 * 1024)
     {
         if (!File.Exists(path)) return new ParsedTranscript(string.Empty, [], [], 0, 0);
-        string[] allLines = File.ReadAllLines(path);
-        var tail = allLines.Length > maxLines ? allLines[^maxLines..] : allLines;
 
-        string intent = string.Empty;
+        // Tail-safe reader with FileShare.ReadWrite: prevents OOM on 500+ MB logs and never locks active agents.
+        string headIntent = ReadHeadIntent(path, maxHeadBytes: 64 * 1024);
+        var (tail, lineCount) = ReadTailLines(path, maxLines, maxTailBytes);
+
+        string intent = headIntent;
         var steps = new List<string>();
         var touched = new List<string>();
         var touchedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -105,7 +110,7 @@ public static partial class TranscriptScanner
 
                 if (string.IsNullOrEmpty(intent) && (isUser || text.Contains("INTENT:", StringComparison.Ordinal)))
                 {
-                    intent = text.Length > 400 ? text[..400] : text;
+                    intent = CleanPreview(text, 400);
                 }
 
                 if (!isUser)
@@ -131,7 +136,110 @@ public static partial class TranscriptScanner
 
         return new ParsedTranscript(
             string.IsNullOrEmpty(intent) ? $"Supervise session {Path.GetFileName(path)}" : intent,
-            steps, touched, allLines.Length, filteredAcks);
+            steps, touched, lineCount, filteredAcks);
+    }
+
+    private static string ReadHeadIntent(string path, int maxHeadBytes)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var sr = new StreamReader(fs, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 16384);
+            int bytesRead = 0;
+            for (int i = 0; i < 60 && bytesRead < maxHeadBytes; i++)
+            {
+                string? rawLine = sr.ReadLine();
+                if (rawLine is null) break;
+                bytesRead += rawLine.Length + 1;
+                if (string.IsNullOrWhiteSpace(rawLine)) continue;
+                try
+                {
+                    using var doc = JsonDocument.Parse(rawLine);
+                    var root = doc.RootElement;
+                    if (root.ValueKind != JsonValueKind.Object) continue;
+                    string recType = GetString(root, "type") ?? GetString(root, "role") ?? string.Empty;
+                    string payloadType = root.TryGetProperty("payload", out var payloadEl) && payloadEl.ValueKind == JsonValueKind.Object
+                        ? GetString(payloadEl, "type") ?? string.Empty
+                        : string.Empty;
+                    bool isUser = recType.Equals("user", StringComparison.OrdinalIgnoreCase)
+                        || recType.Equals("user_input", StringComparison.OrdinalIgnoreCase)
+                        || payloadType.Equals("user_message", StringComparison.OrdinalIgnoreCase);
+                    if (!isUser) continue;
+                    string text = ExtractText(root).Trim();
+                    if (text.Length >= 8 && !text.StartsWith("<command-", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return CleanPreview(text, 400);
+                    }
+                }
+                catch { /* Skip malformed head line */ }
+            }
+        }
+        catch { /* Ignore transient read error */ }
+
+        return string.Empty;
+    }
+
+    private static (List<string> Lines, int Count) ReadTailLines(string path, int maxLines, long maxTailBytes)
+    {
+        var ring = new Queue<string>(Math.Min(maxLines + 1, 1024));
+        int count = 0;
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        bool sought = fs.Length > maxTailBytes;
+        if (sought)
+        {
+            fs.Seek(-maxTailBytes, SeekOrigin.End);
+        }
+
+        using var sr = new StreamReader(fs, Encoding.UTF8, detectEncodingFromByteOrderMarks: !sought, bufferSize: 32768);
+        if (sought)
+        {
+            sr.ReadLine(); // discard partial first line after mid-file seek
+        }
+
+        string? line;
+        while ((line = sr.ReadLine()) is not null)
+        {
+            count++;
+            if (ring.Count == maxLines) ring.Dequeue();
+            ring.Enqueue(line);
+        }
+
+        return (ring.ToList(), count);
+    }
+
+    public static string InferProjectLabel(string source, string fullPath)
+    {
+        try
+        {
+            string normalized = (fullPath ?? string.Empty).Replace('\\', '/');
+            string[] parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2) return source;
+            string leaf = parts[^2];
+            if (leaf.Equals("subagents", StringComparison.OrdinalIgnoreCase) && parts.Length >= 4)
+            {
+                leaf = parts[^4];
+            }
+
+            if (source.StartsWith("claude", StringComparison.OrdinalIgnoreCase))
+            {
+                // Claude encodes C:\work\homebase -> C--work-homebase or /home/user/proj -> -home-user-proj
+                string cleaned = Regex.Replace(leaf, @"^[A-Za-z]--", string.Empty).Trim('-');
+                cleaned = Regex.Replace(cleaned, @"^(?:Users|home)-[^-]+-", string.Empty, RegexOptions.IgnoreCase);
+                return cleaned.Length > 26 ? cleaned[^26..] : (cleaned.Length > 0 ? cleaned : source);
+            }
+
+            return source;
+        }
+        catch
+        {
+            return source;
+        }
+    }
+
+    private static string CleanPreview(string text, int maxChars)
+    {
+        string compact = Regex.Replace(text ?? string.Empty, @"\s+", " ").Trim();
+        return compact.Length > maxChars ? compact[..(maxChars - 1)] + "…" : compact;
     }
 
     public static ResidualEpisode BuildEpisode(
@@ -175,32 +283,71 @@ public static partial class TranscriptScanner
             AssessmentVsExpectations: new EpisodeAssessment(surprise, riskErr, Math.Round(actualRisk, 4), null));
     }
 
-    public static SessionXRayRow ReplayWindows(ITextEmbedder embedder, string source, string path, ParsedTranscript parsed)
+    public static SessionXRayRow ReplayWindows(ITextEmbedder embedder, string source, string path, ParsedTranscript parsed) =>
+        ReplayWindowsWithTail(embedder, source, path, parsed).Row;
+
+    public static SessionXRayOutcome ReplayWindowsWithTail(ITextEmbedder embedder, string source, string path, ParsedTranscript parsed)
     {
         var steps = parsed.Steps.Count > 120 ? parsed.Steps.TakeLast(120).ToList() : parsed.Steps;
+        var normSteps = steps.Select(ThrashDetector.NormalizeStep).ToList();
+        string traceId = Path.GetFileNameWithoutExtension(path);
+        string endSummary = steps.Count > 0 ? string.Join(" | ", steps.TakeLast(2)) : parsed.Intent;
+
+        // Single batched embedding pass for all steps + intent + end summary (eliminates ~2.5x redundant ONNX passes).
+        var batchTexts = new List<string>(normSteps.Count + 2);
+        batchTexts.AddRange(normSteps);
+        int intentIdx = batchTexts.Count;
+        batchTexts.Add(parsed.Intent);
+        int endIdx = batchTexts.Count;
+        batchTexts.Add(endSummary);
+
+        float[][] allEmbs = embedder.EncodeBatch(batchTexts);
         double maxScore = 0.0;
         int? firstFlag = null;
-        for (int end = Math.Min(4, steps.Count); end <= steps.Count; end += 2)
+        string? flaggedPreview = null;
+        ThrashResult? lastResult = null;
+
+        for (int end = Math.Min(4, normSteps.Count); end <= normSteps.Count; end += 2)
         {
             int start = Math.Max(0, end - 5);
-            var res = ThrashDetector.Detect(embedder, steps.GetRange(start, end - start), Path.GetFileNameWithoutExtension(path));
+            int count = end - start;
+            var winText = normSteps.GetRange(start, count);
+            var winEmbs = new float[count][];
+            for (int k = 0; k < count; k++) winEmbs[k] = allEmbs[start + k];
+
+            var res = ThrashDetector.ScorePreEmbeddedWindow(winText, winEmbs, embedder.BackendName, traceId);
+            lastResult = res;
             if (res.ThrashScore > maxScore) maxScore = res.ThrashScore;
-            if (res.ThrashDetected && firstFlag is null) firstFlag = end;
+            if (res.ThrashDetected && firstFlag is null)
+            {
+                firstFlag = end;
+                flaggedPreview = CleanPreview(steps[end - 1], 110);
+            }
         }
+
+        // Also compute tail window (last <= 6 steps) for episode export without re-embedding.
+        int tailCount = Math.Min(6, normSteps.Count);
+        int tailStart = normSteps.Count - tailCount;
+        var tailEmbs = new float[tailCount][];
+        for (int k = 0; k < tailCount; k++) tailEmbs[k] = allEmbs[tailStart + k];
+        var tailThrash = tailCount >= 3
+            ? ThrashDetector.ScorePreEmbeddedWindow(normSteps.GetRange(tailStart, tailCount), tailEmbs, embedder.BackendName, traceId)
+            : lastResult ?? ThrashDetector.ScorePreEmbeddedWindow([], [], embedder.BackendName, traceId);
 
         int postSteps = firstFlag is int f && f < steps.Count ? steps.Count - f : 0;
         int postTokens = firstFlag is int f2 && f2 < steps.Count
             ? steps.Skip(f2).Sum(s => Math.Max(1, s.Length / 4))
             : 0;
 
-        string endSummary = steps.Count > 0 ? string.Join(" | ", steps.TakeLast(2)) : parsed.Intent;
-        float[][] embs = embedder.EncodeBatch([parsed.Intent, endSummary]);
-        double drift = Math.Round(1.0 - Math.Clamp(QuantizedSlabBench.DotFp32Simd(embs[0], embs[1]), -1.0, 1.0), 4);
+        double drift = Math.Round(1.0 - Math.Clamp(QuantizedSlabBench.DotFp32Simd(allEmbs[intentIdx], allEmbs[endIdx]), -1.0, 1.0), 4);
+        string project = InferProjectLabel(source, path);
 
-        return new SessionXRayRow(
-            source, Path.GetFileName(path), parsed.Steps.Count, parsed.FilteredAcks,
+        var row = new SessionXRayRow(
+            source, project, Path.GetFileName(path), parsed.Steps.Count, parsed.FilteredAcks,
             firstFlag is not null, Math.Round(maxScore, 4), firstFlag, postSteps, postTokens,
-            drift, parsed.TouchedFiles.Count);
+            drift, parsed.TouchedFiles.Count, CleanPreview(parsed.Intent, 110), flaggedPreview);
+
+        return new SessionXRayOutcome(row, tailThrash);
     }
 
     private static string? GetString(JsonElement obj, string prop) =>
