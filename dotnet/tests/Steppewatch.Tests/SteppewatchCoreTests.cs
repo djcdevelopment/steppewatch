@@ -25,11 +25,13 @@ public sealed class SteppewatchCoreTests
         }
 
         int actual = QuantizedSlabBench.DotInt8Exact(qU8, wI8, wSum);
+        int actualAvx2 = QuantizedSlabBench.DotInt8Avx2OrScalar(qU8, wI8);
         Assert.Equal(expected, actual);
+        Assert.Equal(expected, actualAvx2);
     }
 
     // Quantizer extremes: q=+127 becomes u8 255, which saturates a naive vpmaddubsw pair (2*255*127 > int16.MaxValue).
-    // Only exercises the AVX2 fallback on hosts without AVX-VNNI (e.g. Win10 + Hyper-V on Alder Lake).
+    // Explicitly exercises BOTH DotInt8Exact (VNNI when available) AND DotInt8Avx2OrScalar on every x64 host.
     [Theory]
     [InlineData(127, 127)]
     [InlineData(127, -127)]
@@ -42,7 +44,9 @@ public sealed class SteppewatchCoreTests
         var wI8 = Enumerable.Repeat((sbyte)w, dim).ToArray();
 
         int actual = QuantizedSlabBench.DotInt8Exact(qU8, wI8, dim * w);
+        int actualAvx2 = QuantizedSlabBench.DotInt8Avx2OrScalar(qU8, wI8);
         Assert.Equal(dim * q * w, actual);
+        Assert.Equal(dim * q * w, actualAvx2);
     }
 
     [Fact]

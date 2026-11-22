@@ -111,11 +111,10 @@ public static class QuantizedSlabBench
     public static int DotInt8Exact(ReadOnlySpan<byte> qUnsignedOffset128, ReadOnlySpan<sbyte> wSigned, int wColSum)
     {
         int len = qUnsignedOffset128.Length;
-        int i = 0;
-
         if (AvxVnni.IsSupported && len >= 32)
         {
             // vpdpbusd: u8 x s8 products, 4-way sums accumulated straight into int32 (no intermediate saturation).
+            int i = 0;
             Vector256<int> acc = Vector256<int>.Zero;
             for (; i <= len - 32; i += 32)
             {
@@ -133,7 +132,15 @@ public static class QuantizedSlabBench
             return total - (128 * wColSum);
         }
 
+        return DotInt8Avx2OrScalar(qUnsignedOffset128, wSigned);
+    }
+
+    public static int DotInt8Avx2OrScalar(ReadOnlySpan<byte> qUnsignedOffset128, ReadOnlySpan<sbyte> wSigned)
+    {
+        int len = qUnsignedOffset128.Length;
+        int i = 0;
         int signedTotal = 0;
+
         if (Avx2.IsSupported && len >= 32)
         {
             // vpmaddubsw saturates each u8*s8 pair-sum to int16. Fed the offset-128 query directly, a pair reaches
