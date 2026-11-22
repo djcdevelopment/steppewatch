@@ -4,7 +4,8 @@
 Tails local append-only JSONL transcripts already written by:
   - Claude Code: ~/.claude/projects/*/*.jsonl and <session>/subagents/agent-*.jsonl
   - Codex CLI:   ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
-  - Hermes:      ~/.hermes/logs/sessions/*.jsonl
+  - Hermes:      ~/.hermes/{logs/sessions,sessions,profiles/*/sessions}/*.jsonl
+                 plus read-only state.db messages when JSONL is absent.
   - Or any explicit --trace JSONL file.
 
 Zero API keys, zero frontier tokens, read-only on transcripts. Filters terse
@@ -23,6 +24,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+from hermes_transcripts import DatabaseSession, Transcript, discover_hermes, read_database_session
 
 from local_embedder import (
     LocalEmbedder,
@@ -54,16 +57,17 @@ def is_bare_tool_ack(text: str) -> bool:
     return bool(BARE_TOOL_ACK_RE.match(compact))
 
 
-def discover_recent_transcripts(max_files: int = 8) -> List[Tuple[str, Path]]:
+def discover_recent_transcripts(max_files: int = 8, hermes_home: Optional[Path] = None) -> List[Tuple[str, Transcript]]:
     """Find the most recently modified Claude Code, Codex, and Hermes JSONL logs."""
+    if max_files <= 0:
+        return []
     home = Path.home()
     patterns = [
         ("claude_main", str(home / ".claude" / "projects" / "*" / "*.jsonl")),
         ("claude_subagent", str(home / ".claude" / "projects" / "*" / "*" / "subagents" / "agent-*.jsonl")),
         ("codex", str(home / ".codex" / "sessions" / "*" / "*" / "*" / "rollout-*.jsonl")),
-        ("hermes", str(home / ".hermes" / "logs" / "sessions" / "*.jsonl")),
     ]
-    found: List[Tuple[float, str, Path]] = []
+    found: List[Tuple[float, str, Transcript]] = []
     for source, pat in patterns:
         for path_str in glob.glob(pat):
             p = Path(path_str)
@@ -71,6 +75,7 @@ def discover_recent_transcripts(max_files: int = 8) -> List[Tuple[str, Path]]:
                 found.append((p.stat().st_mtime, source, p))
             except OSError:
                 continue
+    found.extend(discover_hermes((hermes_home or home / ".hermes").expanduser(), max_files))
     found.sort(key=lambda item: item[0], reverse=True)
     return [(src, p) for _, src, p in found[:max_files]]
 
@@ -97,14 +102,16 @@ def _extract_text_from_content(content: Any) -> str:
     return ""
 
 
-def parse_jsonl_transcript(path: Path, max_lines: int = 400) -> Dict[str, Any]:
+def parse_jsonl_transcript(path: Transcript, max_lines: int = 400) -> Dict[str, Any]:
     """Extract normalized intent, substantive agent steps, and touched file hints."""
-    try:
-        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
-    except OSError:
-        return {"intent": "", "steps": [], "touched_files": [], "line_count": 0, "filtered_acks": 0}
-
-    tail = lines[-max_lines:]
+    if isinstance(path, DatabaseSession):
+        tail, line_count = read_database_session(path, max_lines)
+    else:
+        try:
+            lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            lines = []
+        tail, line_count = lines[-max_lines:], len(lines)
     intent = ""
     steps: List[str] = []
     touched: List[str] = []
@@ -112,15 +119,16 @@ def parse_jsonl_transcript(path: Path, max_lines: int = 400) -> Dict[str, Any]:
     file_re = re.compile(r"\b([A-Za-z0-9_.\-/]+\.(?:py|cs|ts|tsx|js|go|rs|json|yaml|yml|md|sh))\b")
 
     for raw in tail:
-        raw = raw.strip()
-        if not raw:
-            continue
         try:
-            obj = json.loads(raw)
-        except Exception:
+            obj = raw if isinstance(raw, dict) else json.loads(raw)
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(obj, dict):
             continue
 
         rec_type = str(obj.get("type") or obj.get("role") or "").lower()
+        if rec_type in ("session_meta", "system"):
+            continue
         payload = obj.get("payload") if isinstance(obj.get("payload"), dict) else {}
         msg_obj = obj.get("message") if isinstance(obj.get("message"), dict) else {}
 
@@ -132,8 +140,18 @@ def parse_jsonl_transcript(path: Path, max_lines: int = 400) -> Dict[str, Any]:
             or _extract_text_from_content(obj.get("text"))
         ).strip()
 
+        calls = obj.get("tool_calls") or msg_obj.get("tool_calls") or []
+        if isinstance(calls, list):
+            for call in calls:
+                if not isinstance(call, dict):
+                    continue
+                function = call.get("function", call)
+                if isinstance(function, dict) and function.get("name"):
+                    text += f" tool:{function['name']}({str(function.get('arguments', ''))[:160]})"
+        text = text.strip()
+
         if not text:
-            tool_name = obj.get("tool") or payload.get("name") or msg_obj.get("name")
+            tool_name = obj.get("tool_name") or obj.get("tool") or payload.get("name") or msg_obj.get("name")
             if tool_name:
                 text = f"tool:{tool_name} {json.dumps(payload or obj)[:180]}"
 
@@ -162,7 +180,7 @@ def parse_jsonl_transcript(path: Path, max_lines: int = 400) -> Dict[str, Any]:
         "intent": intent or f"Supervise session {path.name}",
         "steps": steps,
         "touched_files": touched[:25],
-        "line_count": len(lines),
+        "line_count": line_count,
         "filtered_acks": filtered_acks,
     }
 
@@ -170,7 +188,7 @@ def parse_jsonl_transcript(path: Path, max_lines: int = 400) -> Dict[str, Any]:
 def build_residual_episode(
     embedder: LocalEmbedder,
     source: str,
-    trace_path: Path,
+    trace_path: Transcript,
     parsed: Dict[str, Any],
     thrash: Dict[str, Any],
     explicit_intent: Optional[str] = None,
@@ -235,7 +253,7 @@ def build_residual_episode(
 
 def evaluate_once(
     embedder: LocalEmbedder,
-    targets: List[Tuple[str, Path]],
+    targets: List[Tuple[str, Transcript]],
     episodes_path: Path,
     explicit_intent: Optional[str],
     jepa_ckpt: Optional[str],
@@ -297,6 +315,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Read-only local watcher for Claude Code, Codex CLI, and Hermes transcripts."
     )
+    parser.add_argument("--hermes-home", type=Path, default=None, help="Hermes root containing sessions, state.db and profiles (default: ~/.hermes)")
     parser.add_argument("--trace", type=Path, help="Explicit JSONL transcript file to watch")
     parser.add_argument("--intent", type=str, default=None, help="Optional explicit intended_outcome override")
     parser.add_argument("--episodes", type=Path, default=Path("episodes/transitions.jsonl"), help="Output NDJSON episodes file")
@@ -314,7 +333,7 @@ def main() -> int:
 
     last_seen_lines: Dict[str, int] = {}
     while True:
-        targets = [("explicit", args.trace)] if args.trace else discover_recent_transcripts(args.max_sessions)
+        targets = [("explicit", args.trace)] if args.trace else discover_recent_transcripts(args.max_sessions, hermes_home=args.hermes_home)
         if not targets:
             if args.json_mode:
                 print(json.dumps({
