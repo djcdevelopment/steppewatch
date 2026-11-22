@@ -106,6 +106,19 @@ Verified on an independent 2022 13-inch M2 MacBook Pro (`PyTorch MPS` Metal `FP1
 
 Scaling from `1` to `16` concurrent queries added only **`+1.77 ms`** on M2 Metal (`8.43 -> 10.20 ms`), while silent-stall detection flagged `0.8635` vs. `0.0000` in **`2.31 ms`** and repo claim grounding indexed `94` symbols in `25.79 ms` (query **`2.78 ms`**). *(Note: `96.5 MiB` is the quantized `INT8 + FP16 scales` slab footprint; the timed Metal matrix above is `192 MiB` in `FP16`.)*
 
+### Everyday Windows 10 Laptop Verification (`i5-12600H`, Zero NPU / Zero dGPU — November 22, 2026)
+
+Verified on a 4-year-old **Dell Precision 3571 (`i5-12600H`, 32 GB RAM, Windows 10 Pro 19045 Hyper-V, Balanced plan)** running the zero-dependency `.NET 10` C# port ([`benchmarks/i5-12600h-win10/`](benchmarks/i5-12600h-win10/README.md), `9/9` xUnit tests, exact `x86_avx2_vpmaddubsw` `INT8` sign-trick kernel — even with Hyper-V hiding AVX-VNNI!):
+
+| Batch (`Q` vs. `262,144` vectors) | Win10 i5 AC `FP32` (`384 MiB`) | Win10 i5 AC Exact `INT8` (`96.5 MiB`) | Win10 i5 Battery `INT8` | AC `INT8` Speedup |
+|---:|---:|---:|---:|---:|
+| `Q = 1` | `6.89 – 7.45 ms` | **`1.66 – 1.87 ms`** | `1.95 – 1.98 ms` | **`~4.1×`** |
+| `Q = 8` | `8.93 – 9.65 ms` | **`3.53 – 4.02 ms`** | `4.62 – 4.72 ms` | **`~2.5×`** |
+| `Q = 16` | `14.16 – 16.27 ms` | **`6.51 – 8.70 ms`** | `6.70 – 7.15 ms` | **`~2.0×`** |
+| `Q = 64` | `62.66 – 67.34 ms` | **`27.91 – 28.67 ms`** | `28.68 – 30.78 ms` | **`~2.3×`** |
+
+Even on battery with zero NPU and zero discrete GPU, exact `INT8` runs in **`6.70–7.15 ms`** at `Q=16` (`2.0×–4.1×` faster than `FP32` purely by moving `4×` fewer bytes), flags polite stalls in **`1.37 ms`**, and catches repo claims at Rank `#1` in **`1.06 ms`**.
+
 ---
 
 ## Pairs Well With NVIDIA `auto-ontology`

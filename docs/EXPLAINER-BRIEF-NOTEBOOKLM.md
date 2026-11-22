@@ -59,7 +59,13 @@ On November 21, 2026, we tested this architecture on live Intel Arrow Lake NPU h
    - `Q = 16`: **`10.20 ms`** Metal vs. `46.06 ms` CPU (**`4.5×` faster** — scaling 16× in batch size added only **`+1.77 ms`**!)
    - `Q = 64`: **`13.71 ms`** Metal vs. `64.34 ms` CPU (**`4.7×` faster**)
    - Silent stall flagged at `0.8635` vs. `0.0000` healthy in **`2.31 ms`**, and local repo claim grounding ran in **`2.78 ms`**.
-5. **Honest Real-World Calibration Lessons Caught Live:**
+5. **Proof That You Don't Even Need an NPU or a Mac — 4-Year-Old Windows 10 Laptop (`i5-12600H`):** Running our zero-Python `.NET 10` C# binary on a 2022 Dell Precision 3571 (`i5-12600H`, Windows 10 Pro, zero NPU, zero discrete GPU — even with Hyper-V hiding AVX-VNNI so it fell back to pure AVX2!), exact `96.5 MiB` `INT8` scored `262,144` vectors at:
+   - `Q = 1`: **`1.66–1.87 ms`** (`~4.1×` faster than `FP32`)
+   - `Q = 8`: **`3.53–4.02 ms`** (`~2.5×` faster than `FP32`)
+   - `Q = 16`: **`6.51–8.70 ms`** on AC (**`6.70–7.15 ms`** on battery!)
+   - `Q = 64`: **`27.91–28.67 ms`** (`~2.3×` faster than `FP32`)
+   - Silent stall caught in **`1.37 ms`**, repo claim caught at **Rank #1** in **`1.06 ms`**.
+6. **Honest Real-World Calibration Lessons Caught Live:**
    - During a real parallel edit burst, terse tool acknowledgements (`"Created file."` ×3) initially caused a transient `0.72` false positive; filtering bare tool-ack stubs dropped it straight to **`0.0000`**.
    - Mixing raw per-line quote vectors into the same slab namespace as coarse symbol vectors crowded top-20 discovery — proving empirically that line anchors and symbol indices belong in separate namespaces.
 

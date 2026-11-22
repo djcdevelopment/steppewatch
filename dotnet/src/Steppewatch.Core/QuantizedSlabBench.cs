@@ -22,7 +22,7 @@ public static class QuantizedSlabBench
     public static SlabBenchReport Run(
         int[]? colCounts = null,
         int[]? qCounts = null,
-        int iterations = 6)
+        int iterations = 15)
     {
         colCounts ??= [4096, 16384, 65536, 262144];
         qCounts ??= [1, 8, 16, 64];
@@ -70,6 +70,17 @@ public static class QuantizedSlabBench
         var int8Results = new Dictionary<string, Dictionary<string, double>>();
         var fp32Results = new Dictionary<string, Dictionary<string, double>>();
 
+        // One-time Tier-1 + Dynamic PGO JIT warmup across both kernels before any timed row.
+        // .NET tiered compilation waits ~100ms before enabling call counting, and Tier-0 PGO
+        // instrumentation counters cause cross-core cache-line bouncing under Parallel.For until
+        // Tier-1 replaces the instrumented code (caught on i5-12600H Win10 & 24-thread Linux).
+        int warmCols = Math.Min(4096, maxCols);
+        var warmScores = new float[8 * warmCols];
+        var warmQ = BuildQueries(new Random(7), 8, out byte[] warmQU8, out float[] warmQScales);
+        WarmupTier1(
+            () => MatMulInt8(warmQU8, warmQScales, 8, weightsInt8, colScales, colSums, warmCols, warmScores),
+            () => MatMulFp32(warmQ, 8, weightsFp32, warmCols, warmScores));
+
         foreach (int n in colCounts)
         {
             var rowInt8 = new Dictionary<string, double>();
@@ -81,13 +92,11 @@ public static class QuantizedSlabBench
                 var qFp32 = BuildQueries(rng, q, out byte[] qU8, out float[] qScales);
 
                 // Warmup + measure exact INT8 quantized slab MatMul (AVX-VNNI / AVX2)
-                MatMulInt8(qU8, qScales, q, weightsInt8, colScales, colSums, n, scores);
                 rowInt8[$"Q={q}"] = MeasureMedianMs(
                     iterations,
                     () => MatMulInt8(qU8, qScales, q, weightsInt8, colScales, colSums, n, scores));
 
                 // Warmup + measure FP32 SIMD MatMul (AVX2+FMA / Vector256)
-                MatMulFp32(qFp32, q, weightsFp32, n, scores);
                 rowFp32[$"Q={q}"] = MeasureMedianMs(
                     iterations,
                     () => MatMulFp32(qFp32, q, weightsFp32, n, scores));
@@ -271,8 +280,35 @@ public static class QuantizedSlabBench
         return qFp32;
     }
 
+    private static void WarmupTier1(Action int8Kernel, Action fp32Kernel)
+    {
+        // First call triggers Tier-0 JIT and starts .NET's call-counting delay timer (~100ms).
+        int8Kernel();
+        fp32Kernel();
+
+        // Keep exercising both kernels past the call-counting delay + 30-call promotion threshold
+        // so Tier-1 + Dynamic PGO completes before timed rows begin.
+        long start = Stopwatch.GetTimestamp();
+        int calls = 1;
+        while (calls < 60 || Stopwatch.GetElapsedTime(start).TotalMilliseconds < 250.0)
+        {
+            int8Kernel();
+            fp32Kernel();
+            calls++;
+        }
+    }
+
     private static double MeasureMedianMs(int iterations, Action action)
     {
+        // Light per-config warmup so page tables, thread-pool workers, and caches are hot.
+        long warmStart = Stopwatch.GetTimestamp();
+        int warmCalls = 0;
+        while (warmCalls < 3 || (warmCalls < 12 && Stopwatch.GetElapsedTime(warmStart).TotalMilliseconds < 40.0))
+        {
+            action();
+            warmCalls++;
+        }
+
         var samples = new double[iterations];
         for (int i = 0; i < iterations; i++)
         {

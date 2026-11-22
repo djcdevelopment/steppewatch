@@ -173,7 +173,23 @@ An independent third-party builder verified Steppewatch Option A (`scripts/01_se
 - **Zero-Token Watchdog & Grounding on M2:** Synthetic polite stall flagged at `0.8635` in **`2.31 ms`** vs. healthy trace at `0.0000`; claim grounding indexed `94` symbols across `11` files in `25.79 ms` and retrieved the real `sigmoid` definition at Rank `#3` in **`2.78 ms`**.
 - **Precision Clarification Adopted:** The independent M2 verification also surfaced an output-summary precision mismatch (displaying the `96.5 MiB INT8` slab size next to the `192.0 MiB FP16` timed Metal matrix); `01_see_the_math_m2.py` now reports the exact timed precision and byte footprint alongside the `INT8+scales` reference.
 
-A standalone hands-on cookbook and runnable scripts for Apple M2 (`Mac14,7`) accompany this paper in [`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md).
+### 4.2 Everyday Windows 10 Laptop Verification (`Dell Precision 3571`, `i5-12600H`, Zero NPU / Zero dGPU — November 22, 2026)
+
+To test the opposite end of the hardware spectrum — a 4-year-old corporate Windows 10 laptop with **no dedicated NPU and no discrete GPU** — we ran the zero-dependency `.NET 10` C# port (`dotnet/`, `v1.7.1-avx2-exact-20261122`, `9/9` xUnit tests) on a **Dell Precision 3571 (`i5-12600H`, 4P+8E / 16 threads, 32 GB RAM, Windows 10 Pro 19045, Balanced power plan)** on both AC and battery. Because Windows 10 ran as a Hyper-V root partition (`CPUID(7,1).EAX = 0`), `.NET` reported `AvxVnni.IsSupported = false` and executed the pure **`x86_avx2_vpmaddubsw` exact `INT8` sign-trick kernel** directly against the **`96.5 MiB` `INT8 + FP16 scales` `[384 × 262,144]` slab** (raw receipts archived in [`benchmarks/i5-12600h-win10/`](benchmarks/i5-12600h-win10/README.md)):
+
+| Batch Size (`Q` vs. `262,144 × 384`) | Win10 i5 AC `FP32` (`384 MiB`) | Win10 i5 AC Exact `INT8` (`96.5 MiB`) | Win10 i5 Battery Exact `INT8` | AC `INT8` Speedup |
+|---:|---:|---:|---:|---:|
+| **`Q = 1`** | `6.89 – 7.45 ms` | **`1.66 – 1.87 ms`** | `1.95 – 1.98 ms` | **`~4.1×`** |
+| **`Q = 8`** | `8.93 – 9.65 ms` | **`3.53 – 4.02 ms`** | `4.62 – 4.72 ms` | **`~2.5×`** |
+| **`Q = 16`** | `14.16 – 16.27 ms` | **`6.51 – 8.70 ms`** | `6.70 – 7.15 ms` | **`~2.0×`** |
+| **`Q = 64`** | `62.66 – 67.34 ms` | **`27.91 – 28.67 ms`** | `28.68 – 30.78 ms` | **`~2.3×`** |
+
+- **Two Real-Hardware Catches Surfaced & Fixed:**
+  1. **AVX2 `vpmaddubsw` `int16` Saturation Fix (`d8f8586`):** Running on Hyper-V exposed that feeding offset-128 queries (`u8` up to `255`) straight into `vpmaddubsw` saturated pairs at `2×255×127 > 32,767` (`4/192` pairs clipped); undoing the bias (`q ^ 0x80`) and applying `Avx2.Abs(qs)` + `Avx2.Sign(wv, qs)` keeps worst-case pairs at `2×127×127 = 32,258 <= 32,767` (bit-for-bit exact across `[-127, 127]`, now explicitly tested on every x64 host even when `AvxVnni` is present).
+  2. **JIT Tier-1 / Dynamic PGO Warmup Fix:** The i5 receipts revealed that a single untimed warmup call inflated small-`N` rows (`N <= 65,536`) by `5–10×` due to Tier-0 JIT and PGO counter contention; `QuantizedSlabBench` now runs a one-time Tier-1 + Dynamic PGO pre-warmup across both kernels (`>= 60` calls and `>= 250 ms`), plus per-config cache warmup and `15` timed samples so steady-state kernel timing is measured honestly.
+- **AC vs. Battery & Watchdog Results:** AC was only `5–15%` faster than battery at `Q <= 8` and within noise at `Q = 16 / 64`; silent polite-stall detection flagged `0.7445` vs. `0.0000` healthy in **`1.37–1.39 ms`**, and claim grounding indexed `232` symbols across `24` files in `13.08 ms` (Rank `#1` catch in **`1.06 ms`**).
+
+Standalone hands-on cookbooks accompany this paper for Apple M2 ([`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md)) and Windows 10 Intel Core i5 ([`COOKBOOK-WIN10-I5.md`](COOKBOOK-WIN10-I5.md)).
 
 ---
 
