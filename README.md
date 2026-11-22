@@ -134,3 +134,12 @@ If you use NVIDIA's Apache-2.0 open-source [**`NVIDIA/auto-ontology`**](https://
 | [`scripts/03_train_tiny_jepa.py`](scripts/03_train_tiny_jepa.py) | **Tiny Local JEPA Trainer** — Trains a compact `384-D` latent state + stall-risk MLP predictor on collected episodes (`--demo-synthetic` supported) and saves a `.npz` checkpoint. |
 | [`scripts/04_xray_my_sessions.py`](scripts/04_xray_my_sessions.py) | **Retrospective Session X-Ray (`--json` supported)** — Replays `W=5` sliding windows across your existing Claude/Codex/Hermes history to spot past stall loops, rank intent-drift surprises, and export real 5-field JEPA training data immediately. |
 | [`MANIFEST.sha256`](MANIFEST.sha256) | Cryptographic SHA-256 provenance manifest for all repository files. |
+
+---
+
+## License & Commercial Support
+
+Steppewatch is released under the [**MIT License**](LICENSE) (`Copyright (c) 2026 Derek Ciula / Steppe Integrations`) as an open builder workshop, starter toolkit, and public prior-art reference.
+
+For production hardware-tuned NPU/GPU agent supervision, custom enterprise agent governance, or integration consulting, reach out to **Steppe Integrations** (`derek@steppeintegrations.com`).
+
