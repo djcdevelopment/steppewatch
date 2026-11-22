@@ -1,0 +1,159 @@
+{
+  "timestamp_utc": "2026-11-22T09:02:59Z",
+  "hardware": {
+    "os_description": "Microsoft Windows 10.0.19045",
+    "architecture": "X64",
+    "framework": ".NET 10.0.15",
+    "logical_cores": 16,
+    "total_memory_gib": 31.7,
+    "vector_hardware_accelerated": true,
+    "vector_float_count": 8,
+    "avx2_supported": true,
+    "fma_supported": true,
+    "avx_vnni_supported": false,
+    "avx512_vnni_supported": false,
+    "arm_adv_simd_supported": false,
+    "active_int8_kernel": "x86_avx2_vpmaddubsw",
+    "active_fp32_kernel": "x86_avx2_fma_256"
+  },
+  "embedder": "hash384_dotnet_simd",
+  "part_a_slab": {
+    "max_columns": 262144,
+    "embed_dim": 384,
+    "slab_int8_plus_scales_mi_b": 96.5,
+    "slab_fp32_mi_b": 384,
+    "int8_kernel": "x86_avx2_vpmaddubsw",
+    "fp32_kernel": "x86_avx2_fma_256",
+    "int8_quantized_ms": {
+      "4096": {
+        "Q=1": 0.642,
+        "Q=8": 0.814,
+        "Q=16": 0.873,
+        "Q=64": 1.202
+      },
+      "16384": {
+        "Q=1": 0.653,
+        "Q=8": 1.218,
+        "Q=16": 1.432,
+        "Q=64": 2.517
+      },
+      "65536": {
+        "Q=1": 0.661,
+        "Q=8": 1.756,
+        "Q=16": 2.027,
+        "Q=64": 6.899
+      },
+      "262144": {
+        "Q=1": 2.089,
+        "Q=8": 4.294,
+        "Q=16": 7.017,
+        "Q=64": 25.838
+      }
+    },
+    "fp32_simd_ms": {
+      "4096": {
+        "Q=1": 0.758,
+        "Q=8": 0.906,
+        "Q=16": 0.993,
+        "Q=64": 1.818
+      },
+      "16384": {
+        "Q=1": 0.705,
+        "Q=8": 1.594,
+        "Q=16": 2.05,
+        "Q=64": 5.444
+      },
+      "65536": {
+        "Q=1": 1.89,
+        "Q=8": 3.294,
+        "Q=16": 4.739,
+        "Q=64": 17.048
+      },
+      "262144": {
+        "Q=1": 7.268,
+        "Q=8": 10.403,
+        "Q=16": 16.382,
+        "Q=64": 67.506
+      }
+    }
+  },
+  "part_b_thrash": {
+    "healthy": {
+      "trace_id": "demo-healthy",
+      "thrash_detected": false,
+      "thrash_score": 0,
+      "thrash_threshold": 0.65,
+      "action": "continue",
+      "mean_adj_cosine": 0.2181,
+      "max_osc_cosine": 0.2123,
+      "all_pairs_cosine": 0.1603,
+      "error_repeat_ratio": 0.8,
+      "stagnation_ratio": 0.25,
+      "tail_new_targets": 10,
+      "productive_debug_progression": true,
+      "progress_score": 1,
+      "latency_ms": 31.08,
+      "backend": "hash384_dotnet_simd"
+    },
+    "stall": {
+      "trace_id": "demo-polite-stall",
+      "thrash_detected": true,
+      "thrash_score": 0.7445,
+      "thrash_threshold": 0.65,
+      "action": "early_abort_and_reroute",
+      "mean_adj_cosine": 0.3046,
+      "max_osc_cosine": 0.4312,
+      "all_pairs_cosine": 0.3387,
+      "error_repeat_ratio": 0.6,
+      "stagnation_ratio": 1,
+      "tail_new_targets": 0,
+      "productive_debug_progression": false,
+      "progress_score": 0,
+      "latency_ms": 1.48,
+      "backend": "hash384_dotnet_simd"
+    }
+  },
+  "part_c_grounding": {
+    "repo": "C:\\work\\steppewatch",
+    "files_scanned": 24,
+    "symbols_indexed": 225,
+    "index_ms": 134.58,
+    "query_ms": 1.3,
+    "synthetic_false_claim": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs is missing an implementation or test for TokenRegex",
+    "ground_truth_ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:20",
+    "caught_in_top5": true,
+    "caught_rank": 1,
+    "top5_hits": [
+      {
+        "rank": 1,
+        "ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:20",
+        "score": 0.3558,
+        "line_text": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:20 | private static partial Regex TokenRegex();"
+      },
+      {
+        "rank": 2,
+        "ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:5",
+        "score": 0.3015,
+        "line_text": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:5 | public interface ITextEmbedder"
+      },
+      {
+        "rank": 3,
+        "ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:13",
+        "score": 0.2924,
+        "line_text": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:13 | public sealed partial class Hash384Embedder : ITextEmbedder"
+      },
+      {
+        "rank": 4,
+        "ref": "dotnet/src/Steppewatch.Core/RepoClaimGrounder.cs:12",
+        "score": 0.2628,
+        "line_text": "dotnet/src/Steppewatch.Core/RepoClaimGrounder.cs:12 | public static partial class RepoClaimGrounder"
+      },
+      {
+        "rank": 5,
+        "ref": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:104",
+        "score": 0.2366,
+        "line_text": "dotnet/src/Steppewatch.Core/Hash384Embedder.cs:104 | private static ulong Avalanche(ulong h)"
+      }
+    ]
+  }
+}
