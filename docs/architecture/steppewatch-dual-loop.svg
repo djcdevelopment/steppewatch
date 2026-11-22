@@ -1,235 +1,272 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" width="1200" height="650" role="img" aria-labelledby="sw-title sw-desc">
-  <title id="sw-title">Steppewatch Dual-Loop Architecture</title>
-  <desc id="sw-desc">Idle client silicon (NPU or Apple M-Series) reads local JSONL transcripts from remote frontier agents to run zero-token real-time supervision and collect 5-field JEPA residual episodes.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 700" width="1220" height="700" role="img" aria-labelledby="sw-uml-title sw-uml-desc">
+  <title id="sw-uml-title">Steppewatch UML Horizontal Swimlane Architecture</title>
+  <desc id="sw-uml-desc">Enterprise light-theme UML horizontal swimlane diagram showing Remote Frontier Agents, Idle Client Silicon Steppewatch Engine, and Residual JEPA Learning and NVIDIA auto-ontology Governance.</desc>
 
   <defs>
-    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
-      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#162033" stroke-width="1"/>
-    </pattern>
-
-    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#020617"/>
-      <stop offset="55%" stop-color="#070f21"/>
-      <stop offset="100%" stop-color="#030916"/>
-    </linearGradient>
-
-    <linearGradient id="slabGlow" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1e1638"/>
-      <stop offset="100%" stop-color="#110d24"/>
-    </linearGradient>
-
-    <linearGradient id="loop1Grad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#062c24"/>
-      <stop offset="100%" stop-color="#051c19"/>
-    </linearGradient>
-
-    <linearGradient id="loop2Grad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2c1d07"/>
-      <stop offset="100%" stop-color="#191206"/>
-    </linearGradient>
-
-    <marker id="arrowCyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#22d3ee"/>
+    <marker id="arrSlate" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#334155"/>
     </marker>
-    <marker id="arrowEmerald" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#34d399"/>
+    <marker id="arrBlue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#0369a1"/>
     </marker>
-    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#fbbf24"/>
+    <marker id="arrViolet" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#6d28d9"/>
     </marker>
-    <marker id="arrowViolet" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#a78bfa"/>
+    <marker id="arrGreen" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#047857"/>
+    </marker>
+    <marker id="arrCrimson" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#be123c"/>
+    </marker>
+    <marker id="arrAmber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#b45309"/>
     </marker>
   </defs>
 
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif; }
     .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .h1 { font-size: 16px; font-weight: 700; fill: #f8fafc; letter-spacing: 0.4px; }
-    .kicker { font-size: 11px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
-    .card-title { font-size: 14px; font-weight: 700; fill: #f8fafc; }
-    .card-sub { font-size: 11.5px; fill: #94a3b8; }
-    .item-title { font-size: 12.5px; font-weight: 600; fill: #e2e8f0; }
-    .item-sub { font-size: 11px; fill: #94a3b8; }
-    .pill-txt { font-size: 11px; font-weight: 600; }
-    .edge-txt { font-size: 11px; font-weight: 600; fill: #cbd5e1; }
-    .edge-sub { font-size: 10px; fill: #94a3b8; }
-    .ns-title { font-size: 11.5px; font-weight: 700; }
-    .ns-sub { font-size: 10px; fill: #cbd5e1; }
+    .hdr-title { font-size: 16px; font-weight: 700; fill: #0f172a; letter-spacing: 0.3px; }
+    .hdr-sub { font-size: 11.5px; fill: #475569; }
+    .pill { font-size: 10.5px; font-weight: 700; }
+    .lane-lbl { font-size: 11px; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; }
+    .lane-sub { font-size: 10px; fill: #475569; }
+    .box-title { font-size: 12.5px; font-weight: 700; fill: #0f172a; }
+    .box-sub { font-size: 10.5px; fill: #334155; }
+    .box-mono { font-size: 10px; fill: #475569; }
+    .edge-lbl { font-size: 10px; font-weight: 700; fill: #334155; }
+    .chip { font-size: 9.5px; font-weight: 700; }
+    .footer-txt { font-size: 10px; fill: #475569; }
   </style>
 
-  <!-- Canvas Background + Blueprint Grid -->
-  <rect x="0" y="0" width="1200" height="650" rx="14" fill="url(#bgGrad)"/>
-  <rect x="0" y="0" width="1200" height="650" rx="14" fill="url(#grid)" opacity="0.65"/>
-  <rect x="1" y="1" width="1198" height="648" rx="13" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+  <!-- Crisp Enterprise White Canvas -->
+  <rect x="0" y="0" width="1220" height="700" rx="12" fill="#ffffff"/>
+  <rect x="1" y="1" width="1218" height="698" rx="11" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
 
-  <!-- Top Header Strip -->
-  <rect x="20" y="18" width="1160" height="48" rx="10" fill="#0b1326" stroke="#1e293b" stroke-width="1"/>
-  <circle cx="42" cy="42" r="6" fill="#34d399"/>
-  <text x="58" y="47" class="h1">STEPPEWATCH</text>
-  <text x="192" y="46" class="card-sub">Dual-Loop Client-Silicon Agent Supervision &amp; JEPA Residual Collector</text>
+  <!-- Top Title Band -->
+  <rect x="1" y="1" width="1218" height="58" rx="11" fill="#f8fafc"/>
+  <line x1="1" y1="59" x2="1219" y2="59" stroke="#cbd5e1" stroke-width="1.2"/>
+  <rect x="20" y="18" width="6" height="24" rx="3" fill="#0369a1"/>
+  <text x="36" y="30" class="hdr-title">STEPPEWATCH · UML Swimlane Architecture</text>
+  <text x="36" y="47" class="hdr-sub">Zero-Token Client-Silicon Supervision &amp; 5-Field JEPA Residual Data Collection</text>
 
-  <!-- Header Metric Pills -->
-  <rect x="742" y="29" width="136" height="26" rx="13" fill="#062c24" stroke="#34d399" stroke-width="1"/>
-  <text x="810" y="46" text-anchor="middle" class="mono pill-txt" fill="#6ee7b7">0.0 MiB GPU VRAM</text>
+  <!-- Metric Pills -->
+  <rect x="758" y="17" width="142" height="26" rx="13" fill="#ecfdf5" stroke="#047857" stroke-width="1"/>
+  <text x="829" y="34" text-anchor="middle" class="mono pill" fill="#065f46">0.0 MiB GPU VRAM</text>
 
-  <rect x="888" y="29" width="128" height="26" rx="13" fill="#082f49" stroke="#22d3ee" stroke-width="1"/>
-  <text x="952" y="46" text-anchor="middle" class="mono pill-txt" fill="#67e8f9">$0.00 API COST</text>
+  <rect x="910" y="17" width="132" height="26" rx="13" fill="#f0f9ff" stroke="#0369a1" stroke-width="1"/>
+  <text x="976" y="34" text-anchor="middle" class="mono pill" fill="#075985">$0.00 API COST</text>
 
-  <rect x="1026" y="29" width="142" height="26" rx="13" fill="#1e1638" stroke="#a78bfa" stroke-width="1"/>
-  <text x="1097" y="46" text-anchor="middle" class="mono pill-txt" fill="#c4b5fd">96.5 MiB INT8 SLAB</text>
-
-  <!-- ===================================================================== -->
-  <!-- COLUMN 1: REMOTE FRONTIER AGENTS & SUBAGENTS                          -->
-  <!-- ===================================================================== -->
-  <rect x="24" y="84" width="290" height="444" rx="12" fill="#0a1628" stroke="#164e63" stroke-width="1.5"/>
-  <text x="42" y="110" class="kicker" fill="#22d3ee">1 · REMOTE FRONTIER AGENTS</text>
-  <text x="42" y="128" class="card-sub">Already writing append-only local logs</text>
-
-  <!-- Agent Card 1: Claude Code -->
-  <rect x="40" y="146" width="258" height="86" rx="9" fill="#082235" stroke="#22d3ee" stroke-width="1.2"/>
-  <text x="54" y="170" class="card-title">Claude Code + Subagents</text>
-  <text x="54" y="191" class="mono item-sub">~/.claude/projects/*/*.jsonl</text>
-  <text x="54" y="210" class="mono item-sub">&lt;id&gt;/subagents/agent-*.jsonl</text>
-
-  <!-- Agent Card 2: Codex CLI -->
-  <rect x="40" y="248" width="258" height="82" rx="9" fill="#082235" stroke="#22d3ee" stroke-width="1.2"/>
-  <text x="54" y="272" class="card-title">OpenAI Codex CLI</text>
-  <text x="54" y="293" class="mono item-sub">~/.codex/sessions/YYYY/MM/DD/</text>
-  <text x="54" y="311" class="mono item-sub">rollout-&lt;ts&gt;-&lt;id&gt;.jsonl</text>
-
-  <!-- Agent Card 3: Hermes -->
-  <rect x="40" y="346" width="258" height="82" rx="9" fill="#082235" stroke="#22d3ee" stroke-width="1.2"/>
-  <text x="54" y="370" class="card-title">Hermes Agent &amp; Custom CLIs</text>
-  <text x="54" y="391" class="mono item-sub">~/.hermes/logs/sessions/*.jsonl</text>
-  <text x="54" y="409" class="mono item-sub">or any --trace &lt;file.jsonl&gt;</text>
-
-  <!-- Bottom Self-Tap Badge inside Col 1 -->
-  <rect x="40" y="446" width="258" height="64" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" stroke-dasharray="4 3"/>
-  <text x="54" y="469" class="item-title" fill="#67e8f9">Agent Self-Tap Protocol (AGENTS.md)</text>
-  <text x="54" y="488" class="item-sub">INTENT: / STUCK: / END_STATE: checkpoints</text>
-  <text x="54" y="502" class="mono edge-sub">scripts/self_tap.py -&gt; JSON</text>
+  <rect x="1052" y="17" width="148" height="26" rx="13" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1"/>
+  <text x="1126" y="34" text-anchor="middle" class="mono pill" fill="#5b21b6">96.5 MiB INT8 SLAB</text>
 
   <!-- ===================================================================== -->
-  <!-- ARROW COL 1 -> COL 2                                                  -->
+  <!-- SWIMLANE 1: REMOTE FRONTIER AGENTS & SUBAGENTS (Y: 74 .. 224)         -->
   <!-- ===================================================================== -->
-  <line x1="314" y1="296" x2="388" y2="296" stroke="#22d3ee" stroke-width="2.2" marker-end="url(#arrowCyan)"/>
-  <rect x="319" y="250" width="66" height="38" rx="6" fill="#071525" stroke="#164e63" stroke-width="1"/>
-  <text x="352" y="266" text-anchor="middle" class="edge-txt" fill="#67e8f9">Read-Only</text>
-  <text x="352" y="281" text-anchor="middle" class="edge-sub">JSONL tail</text>
+  <rect x="20" y="74" width="1180" height="156" rx="8" fill="#f8fbff" stroke="#93c5fd" stroke-width="1.2"/>
+  <rect x="20" y="74" width="166" height="156" rx="8" fill="#e0f2fe" stroke="#93c5fd" stroke-width="1.2"/>
+  <text x="34" y="114" class="lane-lbl" fill="#0369a1">LANE 1</text>
+  <text x="34" y="134" class="box-title" fill="#0c4a6e">Remote Frontier</text>
+  <text x="34" y="151" class="box-title" fill="#0c4a6e">Agents &amp; Subagents</text>
+  <text x="34" y="174" class="lane-sub">Claude Code + subagents</text>
+  <text x="34" y="190" class="lane-sub">OpenAI Codex CLI</text>
+  <text x="34" y="206" class="lane-sub">Hermes · Custom CLIs</text>
 
-  <!-- ===================================================================== -->
-  <!-- COLUMN 2: IDLE CLIENT SILICON + PINNED INT8 SLAB                      -->
-  <!-- ===================================================================== -->
-  <rect x="394" y="84" width="356" height="444" rx="12" fill="#0d1126" stroke="#6d28d9" stroke-width="1.6"/>
-  <text x="412" y="110" class="kicker" fill="#c4b5fd">2 · IDLE CLIENT SILICON ENGINE</text>
-  <text x="412" y="128" class="card-sub">Intel/AMD NPU (OpenVINO) · Apple M2/M3/M4 (MLX + ANE)</text>
+  <!-- UML Initial Node -->
+  <circle cx="212" cy="148" r="9" fill="#0f172a"/>
+  <line x1="221" y1="148" x2="246" y2="148" stroke="#334155" stroke-width="1.8" marker-end="url(#arrSlate)"/>
 
-  <!-- Encoder Box -->
-  <rect x="410" y="146" width="324" height="66" rx="9" fill="#082420" stroke="#34d399" stroke-width="1.2"/>
-  <text x="424" y="170" class="card-title">384-D Local Encoder + Ack Filter</text>
-  <text x="424" y="190" class="mono item-sub">all-MiniLM-L6-v2 (INT8/FP16) · 0.0 MiB dGPU</text>
-  <text x="424" y="204" class="item-sub">Strips bare tool-ack stubs before sliding-window scoring</text>
+  <!-- Activity 1A: Emit INTENT -->
+  <rect x="252" y="102" width="194" height="92" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.5"/>
+  <text x="266" y="124" class="box-title">1. Declare INTENT:</text>
+  <text x="266" y="143" class="box-sub">Target files &amp; exit test</text>
+  <text x="266" y="161" class="mono box-mono">AGENTS.md / CLAUDE.md</text>
+  <text x="266" y="179" class="mono box-mono">self_tap.py onboarding</text>
 
-  <!-- Down Arrow Encoder -> Slab -->
-  <line x1="572" y1="212" x2="572" y2="236" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowViolet)"/>
+  <!-- Arrow 1A -> 1B -->
+  <line x1="446" y1="148" x2="494" y2="148" stroke="#334155" stroke-width="1.8" marker-end="url(#arrSlate)"/>
 
-  <!-- Pinned Zero-Copy INT8 Slab Container -->
-  <rect x="410" y="242" width="324" height="268" rx="10" fill="url(#slabGlow)" stroke="#a78bfa" stroke-width="1.5"/>
-  <text x="424" y="267" class="card-title" fill="#ede9fe">Pinned Quantized Slab [384 × 262,144]</text>
-  <text x="424" y="286" class="mono edge-sub" fill="#c4b5fd">96.5 MiB INT8 · 0 Rebinds · Q={8,16,64} MatMul</text>
+  <!-- Activity 1B: Stream Execution & Local JSONL -->
+  <rect x="500" y="102" width="224" height="92" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.5"/>
+  <text x="514" y="124" class="box-title">2. Execute Steps &amp; Tools</text>
+  <text x="514" y="143" class="box-sub">Append-only local JSONL traces</text>
+  <text x="514" y="161" class="mono box-mono">~/.claude/projects/*/*.jsonl</text>
+  <text x="514" y="179" class="mono box-mono">~/.codex/ · ~/.hermes/logs/</text>
 
-  <!-- 2x2 Namespace Partition Tiles -->
-  <!-- NS_AST -->
-  <rect x="424" y="302" width="144" height="72" rx="7" fill="#131c36" stroke="#38bdf8" stroke-width="1.1"/>
-  <text x="434" y="322" class="mono ns-title" fill="#38bdf8">NS_AST</text>
-  <text x="434" y="340" class="ns-sub">Code &amp; .md symbols</text>
-  <text x="434" y="356" class="mono edge-sub">89 files · 848 syms</text>
+  <!-- Activity 1C: Early Interrupt (Crimson Exception Box) -->
+  <rect x="760" y="96" width="196" height="98" rx="10" fill="#fff1f2" stroke="#be123c" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="774" y="119" class="box-title" fill="#9f1239">Interrupt / Re-Slice</text>
+  <text x="774" y="138" class="box-sub" fill="#881337">Stops silent stall loops</text>
+  <text x="774" y="156" class="box-sub" fill="#881337">before burning 50K+ tok</text>
+  <text x="774" y="176" class="mono box-mono" fill="#be123c">thrash = 0.9278 (27 ms)</text>
 
-  <!-- NS_ONTOLOGY -->
-  <rect x="576" y="302" width="144" height="72" rx="7" fill="#231c10" stroke="#fbbf24" stroke-width="1.1"/>
-  <text x="586" y="322" class="mono ns-title" fill="#fbbf24">NS_ONTOLOGY</text>
-  <text x="586" y="340" class="ns-sub">Certified rules</text>
-  <text x="586" y="356" class="mono edge-sub">NVIDIA auto-ontology</text>
+  <!-- Activity 1D: Emit Draft Claims & END_STATE -->
+  <rect x="984" y="102" width="198" height="92" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.5"/>
+  <text x="998" y="124" class="box-title">3. Draft &amp; END_STATE:</text>
+  <text x="998" y="143" class="box-sub">Assertions, citations &amp; diff</text>
+  <text x="998" y="161" class="mono box-mono">Touched files + test pass</text>
+  <text x="998" y="179" class="mono box-mono">or explicit STUCK: block</text>
 
-  <!-- NS_TRAJECTORY -->
-  <rect x="424" y="384" width="144" height="72" rx="7" fill="#092420" stroke="#34d399" stroke-width="1.1"/>
-  <text x="434" y="404" class="mono ns-title" fill="#34d399">NS_TRAJECTORY</text>
-  <text x="434" y="422" class="ns-sub">Live step windows</text>
-  <text x="434" y="438" class="mono edge-sub">W=3..6 steps / agent</text>
-
-  <!-- NS_EPISODES -->
-  <rect x="576" y="384" width="144" height="72" rx="7" fill="#221438" stroke="#c084fc" stroke-width="1.1"/>
-  <text x="586" y="404" class="mono ns-title" fill="#c084fc">NS_EPISODES</text>
-  <text x="586" y="422" class="ns-sub">5-field residuals</text>
-  <text x="586" y="438" class="mono edge-sub">Δ = surprise history</text>
-
-  <!-- Slab Occupancy Bar -->
-  <rect x="424" y="470" width="296" height="24" rx="5" fill="#090d1a" stroke="#334155" stroke-width="1"/>
-  <rect x="426" y="472" width="12" height="20" rx="3" fill="#a78bfa"/>
-  <text x="446" y="486" class="mono edge-sub" fill="#cbd5e1">0.92% used (2,408 / 262,144) — 99% open</text>
+  <!-- Arrow 1B -> 1D arching cleanly along top inside Lane 1 -->
+  <path d="M 612 102 L 612 86 L 1083 86 L 1083 96" fill="none" stroke="#0369a1" stroke-width="1.5" marker-end="url(#arrBlue)"/>
+  <rect x="794" y="77" width="136" height="16" rx="4" fill="#e0f2fe"/>
+  <text x="862" y="88" text-anchor="middle" class="edge-lbl" fill="#075985">healthy completion</text>
 
   <!-- ===================================================================== -->
-  <!-- BRANCH ARROWS COL 2 -> COL 3 (CLEAN ORTHOGONAL, ZERO OVERLAP)         -->
+  <!-- SWIMLANE 2: IDLE CLIENT SILICON ENGINE (Y: 244 .. 468)                -->
   <!-- ===================================================================== -->
-  <!-- To Loop 1 (Top) -->
-  <path d="M 750 224 L 826 224" fill="none" stroke="#34d399" stroke-width="2.2" marker-end="url(#arrowEmerald)"/>
-  <rect x="756" y="182" width="66" height="34" rx="6" fill="#05211b" stroke="#065f46" stroke-width="1"/>
-  <text x="789" y="197" text-anchor="middle" class="mono edge-sub" fill="#6ee7b7">27–75 ms</text>
-  <text x="789" y="210" text-anchor="middle" class="edge-sub">0 tokens</text>
+  <rect x="20" y="244" width="1180" height="224" rx="8" fill="#faf9ff" stroke="#c4b5fd" stroke-width="1.2"/>
+  <rect x="20" y="244" width="166" height="224" rx="8" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.2"/>
+  <text x="34" y="294" class="lane-lbl" fill="#6d28d9">LANE 2</text>
+  <text x="34" y="314" class="box-title" fill="#4c1d95">Idle Client Silicon</text>
+  <text x="34" y="331" class="box-title" fill="#4c1d95">Steppewatch Engine</text>
+  <text x="34" y="356" class="lane-sub">Intel/AMD NPU (OpenVINO)</text>
+  <text x="34" y="372" class="lane-sub">Apple M2/M3/M4 (MLX/ANE)</text>
+  <text x="34" y="392" class="mono box-mono" fill="#5b21b6">0.0 MiB dGPU VRAM</text>
+  <text x="34" y="408" class="mono box-mono" fill="#5b21b6">0 API tokens spent</text>
 
-  <!-- To Loop 2 (Bottom) -->
-  <path d="M 750 420 L 826 420" fill="none" stroke="#fbbf24" stroke-width="2.2" marker-end="url(#arrowAmber)"/>
-  <rect x="756" y="378" width="66" height="34" rx="6" fill="#231706" stroke="#92400e" stroke-width="1"/>
-  <text x="789" y="393" text-anchor="middle" class="mono edge-sub" fill="#fde68a">5-Field Δ</text>
-  <text x="789" y="406" text-anchor="middle" class="edge-sub">NDJSON</text>
+  <!-- Activity 2A: Pre-Flight Gate -->
+  <rect x="218" y="274" width="208" height="104" rx="10" fill="#ffffff" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="232" y="296" class="box-title">Pre-Flight Gate &amp; Prior</text>
+  <text x="232" y="315" class="mono box-mono">/size · /classify_regime</text>
+  <text x="232" y="333" class="box-sub">Predicts (ŝ_next, r̂_risk)</text>
+  <text x="232" y="351" class="box-sub">before outcome is observed</text>
+  <text x="232" y="368" class="mono box-mono" fill="#6d28d9">0.37 – 22.1 ms</text>
+
+  <!-- Down Arrow 1A -> 2A -->
+  <line x1="332" y1="194" x2="332" y2="268" stroke="#0369a1" stroke-width="1.8" marker-end="url(#arrBlue)"/>
+  <rect x="276" y="220" width="112" height="18" rx="4" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="332" y="232" text-anchor="middle" class="edge-lbl">raw intent</text>
+
+  <!-- Arrow 2A -> 2B -->
+  <line x1="426" y1="326" x2="460" y2="326" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arrViolet)"/>
+
+  <!-- Activity 2B: Read-Only Tail + Ack Filter + Slab MatMul -->
+  <rect x="466" y="264" width="302" height="184" rx="10" fill="#ffffff" stroke="#6d28d9" stroke-width="1.8"/>
+  <text x="480" y="286" class="box-title" fill="#4c1d95">Read-Only Tail + Pinned INT8 Slab</text>
+  <text x="480" y="304" class="box-sub">Filters bare tool-ack stubs ("Created file.")</text>
+  <text x="480" y="321" class="mono box-mono" fill="#5b21b6">S = Q · (W_INT8 ⊙ s_col)  [384 × 262,144]</text>
+
+  <!-- 5 Compact Namespace Chips inside 2B -->
+  <rect x="480" y="334" width="84" height="24" rx="5" fill="#e0f2fe" stroke="#0369a1"/>
+  <text x="522" y="349" text-anchor="middle" class="mono chip" fill="#075985">NS_AST</text>
+
+  <rect x="572" y="334" width="88" height="24" rx="5" fill="#ecfeff" stroke="#0e7490"/>
+  <text x="616" y="349" text-anchor="middle" class="mono chip" fill="#155e75">NS_LINES</text>
+
+  <rect x="668" y="334" width="88" height="24" rx="5" fill="#fef3c7" stroke="#b45309"/>
+  <text x="712" y="349" text-anchor="middle" class="mono chip" fill="#92400e">NS_ONTOLOGY</text>
+
+  <rect x="480" y="366" width="134" height="24" rx="5" fill="#d1fae5" stroke="#047857"/>
+  <text x="547" y="381" text-anchor="middle" class="mono chip" fill="#065f46">NS_TRAJECTORY</text>
+
+  <rect x="622" y="366" width="134" height="24" rx="5" fill="#f3e8ff" stroke="#7e22ce"/>
+  <text x="689" y="381" text-anchor="middle" class="mono chip" fill="#6b21a8">NS_EPISODES</text>
+
+  <!-- Occupancy Bar inside 2B -->
+  <rect x="480" y="402" width="276" height="32" rx="6" fill="#f8fafc" stroke="#cbd5e1"/>
+  <rect x="483" y="405" width="12" height="26" rx="4" fill="#6d28d9"/>
+  <text x="502" y="416" class="mono chip" fill="#0f172a">0.92% used (2,408 / 262,144) · 0 rebinds</text>
+  <text x="502" y="429" class="mono box-mono">1.57 s warm index (89 files / 848 syms)</text>
+
+  <!-- Down Arrow 1B -> 2B -->
+  <line x1="612" y1="194" x2="612" y2="258" stroke="#0369a1" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#arrBlue)"/>
+  <rect x="544" y="220" width="136" height="18" rx="4" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="612" y="232" text-anchor="middle" class="edge-lbl">read-only JSONL tail</text>
+
+  <!-- Arrow 2B -> UML Decision Diamond -->
+  <line x1="768" y1="336" x2="812" y2="336" stroke="#334155" stroke-width="1.8" marker-end="url(#arrSlate)"/>
+
+  <!-- UML Decision Diamond (thrash >= 0.65?) -->
+  <polygon points="858,292 904,336 858,380 812,336" fill="#ffffff" stroke="#334155" stroke-width="1.8"/>
+  <text x="858" y="332" text-anchor="middle" class="edge-lbl" fill="#0f172a">thrash</text>
+  <text x="858" y="346" text-anchor="middle" class="mono edge-lbl" fill="#0f172a">&gt;= 0.65?</text>
+
+  <!-- YES Branch (UP to Lane 1 Interrupt) -->
+  <line x1="858" y1="292" x2="858" y2="200" stroke="#be123c" stroke-width="2" marker-end="url(#arrCrimson)"/>
+  <rect x="818" y="220" width="80" height="18" rx="4" fill="#fff1f2" stroke="#fda4af"/>
+  <text x="858" y="232" text-anchor="middle" class="edge-lbl" fill="#be123c">YES · Alert</text>
+
+  <!-- NO Branch (RIGHT to Post-Flight Claim Grounding) -->
+  <line x1="904" y1="336" x2="964" y2="336" stroke="#047857" stroke-width="2" marker-end="url(#arrGreen)"/>
+  <rect x="910" y="314" width="48" height="17" rx="4" fill="#ecfdf5" stroke="#6ee7b7"/>
+  <text x="934" y="326" text-anchor="middle" class="edge-lbl" fill="#047857">NO</text>
+
+  <!-- Activity 2C: Post-Flight Claim & Line Grounding -->
+  <rect x="970" y="274" width="212" height="124" rx="10" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+  <text x="984" y="296" class="box-title" fill="#064e3b">Post-Flight Grounding</text>
+  <text x="984" y="315" class="mono box-mono">/prescreen_quotes + rules</text>
+  <text x="984" y="334" class="box-sub">Checks claims vs. live repo</text>
+  <text x="984" y="352" class="box-sub">&amp; certified NS_ONTOLOGY</text>
+  <text x="984" y="372" class="mono chip" fill="#047857">3/3 errors · 21/26 line drifts</text>
+  <text x="984" y="387" class="mono box-mono">34 – 75 ms · 0 LLM tokens</text>
+
+  <!-- Down Arrow 1D -> 2C -->
+  <line x1="1083" y1="194" x2="1083" y2="268" stroke="#0369a1" stroke-width="1.8" marker-end="url(#arrBlue)"/>
+  <rect x="1032" y="220" width="102" height="18" rx="4" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="1083" y="232" text-anchor="middle" class="edge-lbl">draft claims</text>
 
   <!-- ===================================================================== -->
-  <!-- COLUMN 3: LOOP 1 (SUPERVISION) & LOOP 2 (JEPA RESIDUAL LEARNING)      -->
+  <!-- SWIMLANE 3: RESIDUAL JEPA LEARNING & GOVERNANCE (Y: 484 .. 648)       -->
   <!-- ===================================================================== -->
-  <!-- LOOP 1 CARD (TOP) -->
-  <rect x="832" y="84" width="344" height="218" rx="12" fill="url(#loop1Grad)" stroke="#34d399" stroke-width="1.5"/>
-  <text x="850" y="110" class="kicker" fill="#34d399">LOOP 1 · REAL-TIME SUPERVISION</text>
-  <text x="850" y="128" class="card-sub">Catches rogue drift before tokens burn</text>
+  <rect x="20" y="484" width="1180" height="160" rx="8" fill="#fffdf5" stroke="#fcd34d" stroke-width="1.2"/>
+  <rect x="20" y="484" width="166" height="160" rx="8" fill="#fef3c7" stroke="#fcd34d" stroke-width="1.2"/>
+  <text x="34" y="528" class="lane-lbl" fill="#b45309">LANE 3</text>
+  <text x="34" y="548" class="box-title" fill="#78350f">Residual Learning</text>
+  <text x="34" y="565" class="box-title" fill="#78350f">&amp; Governance</text>
+  <text x="34" y="588" class="lane-sub">Local JEPA MLP (&lt;2M)</text>
+  <text x="34" y="604" class="lane-sub">Human Certification Gate</text>
+  <text x="34" y="620" class="lane-sub">NVIDIA/auto-ontology</text>
 
-  <rect x="848" y="142" width="312" height="44" rx="7" fill="#06211c" stroke="#10b981" stroke-width="0.9"/>
-  <text x="860" y="161" class="item-title">Silent Stall &amp; Loop Watchdog</text>
-  <text x="860" y="177" class="mono edge-sub">Productive 0.0000 vs. Polite Stall 0.9278</text>
+  <!-- Activity 3A: Tiny Local JEPA Trainer -->
+  <rect x="218" y="514" width="256" height="106" rx="10" fill="#ffffff" stroke="#b45309" stroke-width="1.5"/>
+  <text x="232" y="536" class="box-title">Tiny Local JEPA Trainer</text>
+  <text x="232" y="555" class="mono box-mono">f_θ(z_curr, z_intent) -&gt; (ẑ_end, r̂)</text>
+  <text x="232" y="574" class="box-sub">Updates in &lt;1 s (CPU / M2 UMA)</text>
+  <text x="232" y="592" class="box-sub">Prioritizes high-surprise episodes (Δ)</text>
+  <text x="232" y="609" class="mono box-mono" fill="#b45309">scripts/03_train_tiny_jepa.py</text>
 
-  <rect x="848" y="194" width="312" height="44" rx="7" fill="#06211c" stroke="#10b981" stroke-width="0.9"/>
-  <text x="860" y="213" class="item-title">Claim &amp; Line-Anchor Grounding</text>
-  <text x="860" y="229" class="mono edge-sub">3/3 errors · 21/26 displaced lines caught</text>
+  <!-- Up Arrow 3A -> 2A (Sharper Priors) -->
+  <line x1="332" y1="514" x2="332" y2="384" stroke="#b45309" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#arrAmber)"/>
+  <rect x="256" y="458" width="152" height="18" rx="4" fill="#fffbeb" stroke="#fcd34d"/>
+  <text x="332" y="470" text-anchor="middle" class="edge-lbl" fill="#92400e">sharper priors next run</text>
 
-  <rect x="848" y="246" width="312" height="42" rx="7" fill="#06211c" stroke="#10b981" stroke-width="0.9"/>
-  <text x="860" y="265" class="item-title">Parallel Tool-Ack Stub Filter</text>
-  <text x="860" y="280" class="mono edge-sub">Filters bare acks on bursts (0.72 -&gt; 0.0)</text>
+  <!-- Activity 3B: Human Certification Gate + NVIDIA auto-ontology -->
+  <rect x="520" y="514" width="320" height="106" rx="10" fill="#ffffff" stroke="#b45309" stroke-width="1.5"/>
+  <text x="534" y="536" class="box-title">Human Gate &amp; NVIDIA/auto-ontology</text>
+  <text x="534" y="555" class="box-sub">Recurring high-surprise traps -&gt; draft rules</text>
+  <text x="534" y="573" class="box-sub">Human-in-the-loop approval (Apache 2.0)</text>
+  <text x="534" y="592" class="box-sub">Zero autonomous rule hallucination</text>
+  <text x="534" y="609" class="mono box-mono" fill="#b45309">Certified catalog -&gt; NS_ONTOLOGY</text>
 
-  <!-- LOOP 2 CARD (BOTTOM) -->
-  <rect x="832" y="316" width="344" height="212" rx="12" fill="url(#loop2Grad)" stroke="#fbbf24" stroke-width="1.5"/>
-  <text x="850" y="342" class="kicker" fill="#fbbf24">LOOP 2 · JEPA RESIDUAL LEARNING</text>
-  <text x="850" y="360" class="card-sub">Turns every surprise into local intelligence</text>
+  <!-- Up Arrow 3B -> 2B (Certified Rules -> NS_ONTOLOGY) -->
+  <line x1="680" y1="514" x2="680" y2="454" stroke="#b45309" stroke-width="1.8" marker-end="url(#arrAmber)"/>
+  <rect x="614" y="468" width="132" height="18" rx="4" fill="#fffbeb" stroke="#fcd34d"/>
+  <text x="680" y="480" text-anchor="middle" class="edge-lbl" fill="#92400e">certified rules</text>
 
-  <rect x="848" y="374" width="312" height="44" rx="7" fill="#1f1506" stroke="#d97706" stroke-width="0.9"/>
-  <text x="860" y="393" class="item-title">5-Field Residual Episodes</text>
-  <text x="860" y="409" class="mono edge-sub">s_t · intent · ŝ_next · s_next · Δ surprise</text>
+  <!-- Activity 3C: Append 5-Field Residual Episode -->
+  <rect x="886" y="514" width="296" height="106" rx="10" fill="#ffffff" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="900" y="536" class="box-title" fill="#4c1d95">5-Field Residual Episode Store</text>
+  <text x="900" y="555" class="mono box-mono">episodes/transitions.jsonl</text>
+  <text x="900" y="574" class="box-sub">s_t · intent · ŝ_next · s_next · Δ</text>
+  <text x="900" y="592" class="box-sub">Captures surprise &amp; missed anchors</text>
+  <text x="900" y="609" class="mono box-mono" fill="#6d28d9">Δ_state = 1 - cos(ŝ_next, s_next)</text>
 
-  <rect x="848" y="426" width="312" height="42" rx="7" fill="#1f1506" stroke="#d97706" stroke-width="0.9"/>
-  <text x="860" y="445" class="item-title">Tiny Local JEPA Trainer (&lt;2M params)</text>
-  <text x="860" y="460" class="mono edge-sub">Updates in &lt;1 s on CPU or M2 Unified Memory</text>
+  <!-- Down Arrow 2C -> 3C -->
+  <line x1="1076" y1="398" x2="1076" y2="508" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arrViolet)"/>
+  <rect x="1008" y="458" width="136" height="18" rx="4" fill="#f5f3ff" stroke="#c4b5fd"/>
+  <text x="1076" y="470" text-anchor="middle" class="edge-lbl" fill="#5b21b6">log residual (Δ)</text>
 
-  <rect x="848" y="476" width="312" height="40" rx="7" fill="#1f1506" stroke="#d97706" stroke-width="0.9"/>
-  <text x="860" y="495" class="item-title">Human Certification Gate</text>
-  <text x="860" y="509" class="mono edge-sub">Recurring traps -&gt; NVIDIA auto-ontology</text>
+  <!-- Arrow 3C -> 3B (Recurring traps) -->
+  <line x1="886" y1="567" x2="846" y2="567" stroke="#b45309" stroke-width="1.8" marker-end="url(#arrAmber)"/>
 
-  <!-- ===================================================================== -->
-  <!-- CLEAN BOTTOM FEEDBACK BUS (DEDICATED OPEN RUNWAY, ZERO COLLISIONS)    -->
-  <!-- ===================================================================== -->
-  <path d="M 1004 528 L 1004 566 L 572 566 L 572 534" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowAmber)"/>
-  <rect x="650" y="552" width="290" height="26" rx="13" fill="#1b1407" stroke="#d97706" stroke-width="1"/>
-  <text x="795" y="569" text-anchor="middle" class="edge-txt" fill="#fde68a">Sharper risk priors + certified rules feed next run</text>
+  <!-- Arrow 3C -> 3A (High-surprise pairs routing cleanly below boxes inside Lane 3) -->
+  <path d="M 1034 620 L 1034 636 L 346 636 L 346 626" fill="none" stroke="#6d28d9" stroke-width="1.6" marker-end="url(#arrViolet)"/>
+  <rect x="598" y="627" width="184" height="15" rx="4" fill="#f5f3ff"/>
+  <text x="690" y="638" text-anchor="middle" class="edge-lbl" fill="#5b21b6">high-surprise training pairs</text>
 
-  <!-- Bottom Provenance Footer Bar -->
-  <rect x="24" y="594" width="1152" height="38" rx="8" fill="#091122" stroke="#1e293b" stroke-width="1"/>
-  <text x="42" y="618" class="mono edge-sub" fill="#94a3b8">PROVEN NOV 21, 2026 (INTEL ARROW LAKE NPU)  ·  1.57 s WARM INDEX (89 FILES / 848 SYMS)  ·  PORTABLE TO APPLE M2/M3/M4 (24 GB UMA)</text>
-  <text x="1158" y="618" text-anchor="end" class="mono edge-sub" fill="#34d399">MIT · github.com/djcdevelopment/steppewatch</text>
+  <!-- Bottom Provenance Bar -->
+  <rect x="20" y="658" width="1180" height="30" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="34" y="677" class="mono footer-txt">PROVEN NOV 21, 2026 (INTEL ARROW LAKE NPU) · 1.57 s WARM INDEX (89 FILES / 848 SYMS) · PORTABLE TO APPLE M2/M3/M4 (24 GB UMA)</text>
+  <text x="1186" y="677" text-anchor="end" class="mono footer-txt" fill="#0369a1">MIT · github.com/djcdevelopment/steppewatch</text>
 </svg>

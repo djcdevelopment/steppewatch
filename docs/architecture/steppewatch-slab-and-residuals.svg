@@ -1,142 +1,208 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560" role="img" aria-labelledby="p-title p-desc">
-  <title id="p-title">Steppewatch Three-Phase Supervision and NVIDIA auto-ontology Interop</title>
-  <desc id="p-desc">Three-phase zero-token supervision pipeline (pre-flight sizing, in-flight semantic thrash watchdog, post-flight claim grounding) backed by a single pinned INT8 slab and two-way NVIDIA auto-ontology certification loop.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 740" width="1220" height="740" role="img" aria-labelledby="seq-title seq-desc">
+  <title id="seq-title">Steppewatch UML Sequence Diagram</title>
+  <desc id="seq-desc">Enterprise light-theme UML Sequence Diagram showing temporal interactions across Frontier Agent, Local JSONL Transcript, Steppewatch Local Silicon, Pinned INT8 Slab, and JEPA Store with NVIDIA auto-ontology.</desc>
 
   <defs>
-    <pattern id="pgrid" width="24" height="24" patternUnits="userSpaceOnUse">
-      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#162033" stroke-width="1"/>
-    </pattern>
-    <linearGradient id="pbg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#020617"/>
-      <stop offset="100%" stop-color="#060e20"/>
-    </linearGradient>
-    <marker id="paCyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#22d3ee"/>
+    <marker id="sArrSlate" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#334155"/>
     </marker>
-    <marker id="paEmerald" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#34d399"/>
+    <marker id="sArrBlue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#0369a1"/>
     </marker>
-    <marker id="paAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#fbbf24"/>
+    <marker id="sArrViolet" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#6d28d9"/>
     </marker>
-    <marker id="paViolet" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#a78bfa"/>
+    <marker id="sArrGreen" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#047857"/>
+    </marker>
+    <marker id="sArrCrimson" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#be123c"/>
+    </marker>
+    <marker id="sArrAmber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#b45309"/>
     </marker>
   </defs>
 
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif; }
     .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .title { font-size: 15px; font-weight: 700; fill: #f8fafc; letter-spacing: 0.3px; }
-    .kicker { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-    .h3 { font-size: 13.5px; font-weight: 700; fill: #f8fafc; }
-    .sub { font-size: 11px; fill: #94a3b8; }
-    .val { font-size: 11.5px; font-weight: 600; fill: #e2e8f0; }
-    .edge { font-size: 10.5px; font-weight: 600; fill: #cbd5e1; }
+    .hdr-title { font-size: 16px; font-weight: 700; fill: #0f172a; }
+    .hdr-sub { font-size: 11.5px; fill: #475569; }
+    .actor-title { font-size: 12.5px; font-weight: 700; fill: #0f172a; }
+    .actor-sub { font-size: 10px; fill: #475569; }
+    .msg { font-size: 11px; font-weight: 600; fill: #0f172a; }
+    .msg-sub { font-size: 10px; fill: #475569; }
+    .frag-tag { font-size: 10.5px; font-weight: 700; fill: #ffffff; }
+    .guard { font-size: 10.5px; font-weight: 700; }
+    .step-num { font-size: 10px; font-weight: 700; fill: #ffffff; }
+    .footer-txt { font-size: 10px; fill: #475569; }
   </style>
 
-  <!-- Background -->
-  <rect x="0" y="0" width="1200" height="560" rx="14" fill="url(#pbg)"/>
-  <rect x="0" y="0" width="1200" height="560" rx="14" fill="url(#pgrid)" opacity="0.6"/>
-  <rect x="1" y="1" width="1198" height="558" rx="13" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+  <!-- Crisp Enterprise White Canvas -->
+  <rect x="0" y="0" width="1220" height="740" rx="12" fill="#ffffff"/>
+  <rect x="1" y="1" width="1218" height="738" rx="11" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
 
-  <!-- Header -->
-  <rect x="20" y="16" width="1160" height="44" rx="9" fill="#0b1326" stroke="#1e293b"/>
-  <text x="38" y="43" class="title">THREE-PHASE SUPERVISION PIPELINE · PINNED INT8 SLAB · NVIDIA AUTO-ONTOLOGY INTEROP</text>
-  <text x="1162" y="42" text-anchor="end" class="mono sub" fill="#a78bfa">PAPER.md §2–§5</text>
-
-  <!-- ===================================================================== -->
-  <!-- TOP ROW: THREE-PHASE ZERO-TOKEN SUPERVISION                           -->
-  <!-- ===================================================================== -->
-  <!-- Phase 1: Pre-Flight -->
-  <rect x="28" y="80" width="340" height="122" rx="10" fill="#082032" stroke="#22d3ee" stroke-width="1.4"/>
-  <text x="46" y="104" class="kicker" fill="#22d3ee">PHASE 1 · PRE-FLIGHT GATE</text>
-  <text x="46" y="126" class="h3">/size &amp; /classify_regime</text>
-  <text x="46" y="146" class="sub">Predicts output budget &amp; safe slicing mode</text>
-  <text x="46" y="164" class="sub">Records pre-outcome JEPA prediction (ŝ_next, r̂)</text>
-  <text x="46" y="186" class="mono val" fill="#67e8f9">0.37 – 22.1 ms · 0 LLM tokens</text>
-
-  <!-- Arrow Phase 1 -> Phase 2 -->
-  <line x1="368" y1="141" x2="424" y2="141" stroke="#22d3ee" stroke-width="2" marker-end="url(#paCyan)"/>
-
-  <!-- Phase 2: In-Flight -->
-  <rect x="430" y="80" width="340" height="122" rx="10" fill="#062922" stroke="#34d399" stroke-width="1.4"/>
-  <text x="448" y="104" class="kicker" fill="#34d399">PHASE 2 · IN-FLIGHT WATCHDOG</text>
-  <text x="448" y="126" class="h3">/detect_thrash (W = 3..6 steps)</text>
-  <text x="448" y="146" class="sub">Cosine oscillation + code-target growth + ack filter</text>
-  <text x="448" y="164" class="sub">Protects advancing debug; flags polite stall loops</text>
-  <text x="448" y="186" class="mono val" fill="#6ee7b7">26.6 – 27.7 ms · 0.0000 vs. 0.9278</text>
-
-  <!-- Arrow Phase 2 -> Phase 3 -->
-  <line x1="770" y1="141" x2="826" y2="141" stroke="#34d399" stroke-width="2" marker-end="url(#paEmerald)"/>
-
-  <!-- Phase 3: Post-Flight -->
-  <rect x="832" y="80" width="340" height="122" rx="10" fill="#171430" stroke="#a78bfa" stroke-width="1.4"/>
-  <text x="850" y="104" class="kicker" fill="#c4b5fd">PHASE 3 · POST-FLIGHT GROUNDING</text>
-  <text x="850" y="126" class="h3">/prescreen_quotes &amp; /batch_slab_route</text>
-  <text x="850" y="146" class="sub">Checks draft claims vs. live code + certified rules</text>
-  <text x="850" y="164" class="sub">Flags hallucinated absences &amp; displaced line spans</text>
-  <text x="850" y="186" class="mono val" fill="#ddd6fe">34 – 75 ms · 3/3 errors · 21/26 line drifts</text>
-
-  <!-- Vertical Connectors from Phases to Central Slab -->
-  <line x1="198" y1="202" x2="198" y2="250" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#paCyan)"/>
-  <line x1="600" y1="202" x2="600" y2="250" stroke="#34d399" stroke-width="1.8" marker-end="url(#paEmerald)"/>
-  <line x1="1002" y1="202" x2="1002" y2="250" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#paViolet)"/>
+  <!-- Top Title Band -->
+  <rect x="1" y="1" width="1218" height="56" rx="11" fill="#f8fafc"/>
+  <line x1="1" y1="57" x2="1219" y2="57" stroke="#cbd5e1" stroke-width="1.2"/>
+  <rect x="20" y="16" width="6" height="24" rx="3" fill="#6d28d9"/>
+  <text x="36" y="29" class="hdr-title">STEPPEWATCH · UML Sequence Diagram (Three-Phase Supervision &amp; Residual Loop)</text>
+  <text x="36" y="45" class="hdr-sub">Out-of-Band Supervision · Zero GPU VRAM Contention · Two-Way NVIDIA/auto-ontology Governance</text>
+  <text x="1196" y="34" text-anchor="end" class="mono actor-sub" fill="#6d28d9">PAPER.md §2–§5</text>
 
   <!-- ===================================================================== -->
-  <!-- MIDDLE ROW: PINNED ZERO-COPY INT8 SLAB                                -->
+  <!-- 5 UML PARTICIPANT BOXES (TOP)                                         -->
+  <!-- X Centers: 130, 365, 610, 855, 1090                                   -->
   <!-- ===================================================================== -->
-  <rect x="28" y="256" width="1144" height="114" rx="11" fill="#120f29" stroke="#a78bfa" stroke-width="1.6"/>
-  <text x="48" y="281" class="kicker" fill="#c4b5fd">SHARED ZERO-COPY QUANTIZED MATRIX SLAB · S = Q · (W_INT8 ⊙ s_col) · 96.5 MiB · 0 REBINDS · 0.0 MiB DISCRETE GPU VRAM</text>
+  <!-- P1: Frontier Agent -->
+  <rect x="30" y="74" width="200" height="52" rx="7" fill="#f0f9ff" stroke="#0369a1" stroke-width="1.5"/>
+  <text x="130" y="96" text-anchor="middle" class="actor-title" fill="#0c4a6e">Frontier Agent</text>
+  <text x="130" y="114" text-anchor="middle" class="actor-sub">Claude · Codex · Hermes</text>
 
-  <!-- Five Distinct Partitions (including Proof B Lesson: Separate NS_LINES) -->
-  <rect x="46" y="296" width="208" height="58" rx="7" fill="#0d1b33" stroke="#38bdf8" stroke-width="1.1"/>
-  <text x="58" y="318" class="mono val" fill="#38bdf8">NS_AST (Symbols)</text>
-  <text x="58" y="338" class="sub">Code + Markdown ## sections</text>
+  <!-- P2: Local JSONL Log -->
+  <rect x="265" y="74" width="200" height="52" rx="7" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <text x="365" y="96" text-anchor="middle" class="actor-title">Local JSONL Log</text>
+  <text x="365" y="114" text-anchor="middle" class="mono actor-sub">append-only SSD trace</text>
 
-  <rect x="268" y="296" width="212" height="58" rx="7" fill="#0f202c" stroke="#22d3ee" stroke-width="1.1"/>
-  <text x="280" y="318" class="mono val" fill="#67e8f9">NS_LINES (Isolated)</text>
-  <text x="280" y="338" class="sub">Line anchors (Proof B lesson)</text>
+  <!-- P3: Steppewatch Silicon -->
+  <rect x="510" y="74" width="200" height="52" rx="7" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+  <text x="610" y="96" text-anchor="middle" class="actor-title" fill="#064e3b">Steppewatch Engine</text>
+  <text x="610" y="114" text-anchor="middle" class="actor-sub">NPU / Apple M2 · 0 dGPU</text>
 
-  <rect x="494" y="296" width="212" height="58" rx="7" fill="#231a0c" stroke="#fbbf24" stroke-width="1.1"/>
-  <text x="506" y="318" class="mono val" fill="#fbbf24">NS_ONTOLOGY</text>
-  <text x="506" y="338" class="sub">Human-certified contract rules</text>
+  <!-- P4: Pinned INT8 Slab -->
+  <rect x="755" y="74" width="200" height="52" rx="7" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="855" y="96" text-anchor="middle" class="actor-title" fill="#4c1d95">Pinned INT8 Slab</text>
+  <text x="855" y="114" text-anchor="middle" class="mono actor-sub">[384×262144] · 96.5 MiB</text>
 
-  <rect x="720" y="296" width="212" height="58" rx="7" fill="#082420" stroke="#34d399" stroke-width="1.1"/>
-  <text x="732" y="318" class="mono val" fill="#34d399">NS_TRAJECTORY</text>
-  <text x="732" y="338" class="sub">Batched live worker steps</text>
+  <!-- P5: JEPA & Ontology -->
+  <rect x="990" y="74" width="200" height="52" rx="7" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+  <text x="1090" y="96" text-anchor="middle" class="actor-title" fill="#78350f">JEPA &amp; Ontology</text>
+  <text x="1090" y="114" text-anchor="middle" class="actor-sub">Episodes · NVIDIA/auto-ontology</text>
 
-  <rect x="946" y="296" width="208" height="58" rx="7" fill="#201336" stroke="#c084fc" stroke-width="1.1"/>
-  <text x="958" y="318" class="mono val" fill="#d8b4fe">NS_EPISODES</text>
-  <text x="958" y="338" class="sub">5-field residual history</text>
+  <!-- Vertical Dashed UML Lifelines -->
+  <line x1="130" y1="126" x2="130" y2="660" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="6 5"/>
+  <line x1="365" y1="126" x2="365" y2="660" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="6 5"/>
+  <line x1="610" y1="126" x2="610" y2="660" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="6 5"/>
+  <line x1="855" y1="126" x2="855" y2="660" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="6 5"/>
+  <line x1="1090" y1="126" x2="1090" y2="660" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="6 5"/>
+
+  <!-- UML Execution Activation Bars -->
+  <rect x="124" y="148" width="12" height="392" rx="3" fill="#e0f2fe" stroke="#0369a1" stroke-width="1.1"/>
+  <rect x="604" y="176" width="12" height="444" rx="3" fill="#d1fae5" stroke="#047857" stroke-width="1.1"/>
+  <rect x="849" y="190" width="12" height="38" rx="3" fill="#ede9fe" stroke="#6d28d9" stroke-width="1.1"/>
+  <rect x="849" y="330" width="12" height="38" rx="3" fill="#ede9fe" stroke="#6d28d9" stroke-width="1.1"/>
+  <rect x="849" y="514" width="12" height="42" rx="3" fill="#ede9fe" stroke="#6d28d9" stroke-width="1.1"/>
+  <rect x="1084" y="232" width="12" height="28" rx="3" fill="#fef3c7" stroke="#b45309" stroke-width="1.1"/>
+  <rect x="1084" y="592" width="12" height="54" rx="3" fill="#fef3c7" stroke="#b45309" stroke-width="1.1"/>
 
   <!-- ===================================================================== -->
-  <!-- BOTTOM ROW: RESIDUAL JEPA LOOP + NVIDIA AUTO-ONTOLOGY INTEROP         -->
+  <!-- PHASE 1: PRE-FLIGHT GATE (Y: 150 .. 260)                              -->
   <!-- ===================================================================== -->
-  <!-- Down arrow from NS_EPISODES -> JEPA Residual Store -->
-  <line x1="1050" y1="370" x2="1050" y2="416" stroke="#c084fc" stroke-width="2" marker-end="url(#paViolet)"/>
+  <!-- Step 1: Agent -> JSONL -->
+  <line x1="136" y1="164" x2="358" y2="164" stroke="#0369a1" stroke-width="1.8" marker-end="url(#sArrBlue)"/>
+  <circle cx="156" cy="150" r="9" fill="#0369a1"/><text x="156" y="153.5" text-anchor="middle" class="step-num">1</text>
+  <text x="171" y="154" class="msg">write INTENT: target files &amp; goal</text>
 
-  <!-- Left Bottom Card: NVIDIA auto-ontology -->
-  <rect x="28" y="422" width="490" height="112" rx="10" fill="#1f1708" stroke="#fbbf24" stroke-width="1.4"/>
-  <text x="46" y="446" class="kicker" fill="#fbbf24">OPEN ECOSYSTEM · NVIDIA/auto-ontology (APACHE 2.0)</text>
-  <text x="46" y="469" class="h3">Human-Certified Semantic Governance &amp; Discovery</text>
-  <text x="46" y="490" class="sub">1. Export certified catalog rules -&gt; NS_ONTOLOGY (zero-token checks)</text>
-  <text x="46" y="510" class="sub">2. Receive recurring high-surprise residual traps for human approval</text>
+  <!-- Step 2: Engine -> Slab (Pre-Flight) -->
+  <line x1="616" y1="202" x2="843" y2="202" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#sArrViolet)"/>
+  <circle cx="636" cy="188" r="9" fill="#6d28d9"/><text x="636" y="191.5" text-anchor="middle" class="step-num">2</text>
+  <text x="651" y="192" class="msg">/size &amp; /classify_regime</text>
+  <text x="651" y="216" class="mono msg-sub">0.37 – 22.1 ms · 0 API tokens</text>
 
-  <!-- Up arrow NVIDIA auto-ontology -> NS_ONTOLOGY -->
-  <path d="M 460 422 L 460 396 L 600 396 L 600 376" fill="none" stroke="#fbbf24" stroke-width="2" marker-end="url(#paAmber)"/>
-  <rect x="478" y="384" width="110" height="22" rx="5" fill="#1f1708" stroke="#b45309"/>
-  <text x="533" y="399" text-anchor="middle" class="mono edge" fill="#fde68a">Certified rules</text>
+  <!-- Step 3: Engine -> JEPA (Record Pre-Outcome Prior) -->
+  <line x1="616" y1="246" x2="1078" y2="246" stroke="#b45309" stroke-width="1.8" marker-end="url(#sArrAmber)"/>
+  <circle cx="636" cy="232" r="9" fill="#b45309"/><text x="636" y="235.5" text-anchor="middle" class="step-num">3</text>
+  <text x="651" y="236" class="msg">record pre-outcome prior (ŝ_next, r̂_risk)</text>
 
-  <!-- Right Bottom Card: JEPA Residual Training -->
-  <rect x="650" y="422" width="522" height="112" rx="10" fill="#13102b" stroke="#c084fc" stroke-width="1.4"/>
-  <text x="668" y="446" class="kicker" fill="#d8b4fe">CLOSED-LOOP LEARNING · 5-FIELD RESIDUAL EPISODES</text>
-  <text x="668" y="469" class="h3">Surprise-Prioritized Local JEPA Predictor (CPU / M2 UMA)</text>
-  <text x="668" y="490" class="mono sub" fill="#cbd5e1">f_θ(z_curr, z_intent) -&gt; (ẑ_end, r̂_risk)   |   Δ = 1 - cos(ẑ_end, z_end)</text>
-  <text x="668" y="510" class="sub">Real-time NPU inference/harvesting stays isolated from &lt;1 s MLP updates</text>
+  <!-- ===================================================================== -->
+  <!-- PHASE 2: IN-FLIGHT STREAMING & WATCHDOG (Y: 274 .. 366)               -->
+  <!-- ===================================================================== -->
+  <!-- Step 4: Agent -> JSONL -->
+  <line x1="136" y1="290" x2="358" y2="290" stroke="#0369a1" stroke-width="1.8" marker-end="url(#sArrBlue)"/>
+  <circle cx="156" cy="276" r="9" fill="#0369a1"/><text x="156" y="279.5" text-anchor="middle" class="step-num">4</text>
+  <text x="171" y="280" class="msg">stream steps &amp; tool calls (async)</text>
 
-  <!-- Connecting arrow JEPA -> NVIDIA auto-ontology (Candidate rule drafts) -->
-  <line x1="650" y1="478" x2="524" y2="478" stroke="#fbbf24" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#paAmber)"/>
-  <rect x="532" y="454" width="110" height="20" rx="5" fill="#1b1407" stroke="#92400e"/>
-  <text x="587" y="468" text-anchor="middle" class="edge" fill="#fde68a">Draft rule traps</text>
+  <!-- Step 5: JSONL --> Engine (Read-only tail + ack filter) -->
+  <line x1="365" y1="312" x2="598" y2="312" stroke="#334155" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#sArrSlate)"/>
+  <circle cx="386" cy="298" r="9" fill="#334155"/><text x="386" y="301.5" text-anchor="middle" class="step-num">5</text>
+  <text x="401" y="302" class="msg">read-only tail + filter bare acks</text>
+
+  <!-- Step 6: Engine -> Slab (Batched MatMul) -->
+  <line x1="616" y1="348" x2="843" y2="348" stroke="#047857" stroke-width="1.8" marker-end="url(#sArrGreen)"/>
+  <circle cx="636" cy="334" r="9" fill="#047857"/><text x="636" y="337.5" text-anchor="middle" class="step-num">6</text>
+  <text x="651" y="338" class="msg">/detect_thrash · Q∈{8,16,64} MatMul</text>
+  <text x="651" y="362" class="mono msg-sub">NS_TRAJECTORY (W=3..6) · ~27 ms</text>
+
+  <!-- ===================================================================== -->
+  <!-- UML ALT COMBINED FRAGMENT: STALL LOOP VS HEALTHY PROGRESSION          -->
+  <!-- ===================================================================== -->
+  <rect x="44" y="378" width="932" height="196" rx="6" fill="none" stroke="#475569" stroke-width="1.4"/>
+
+  <!-- Top ALT region (Polite Stall / Thrash) -->
+  <rect x="45" y="379" width="930" height="72" fill="#fff1f2" opacity="0.72"/>
+  <!-- Pentagon alt label tab -->
+  <polygon points="44,378 96,378 96,396 86,404 44,404" fill="#334155"/>
+  <text x="68" y="395" text-anchor="middle" class="mono frag-tag">alt</text>
+  <text x="108" y="396" class="mono guard" fill="#be123c">[Polite Stall / Thrash Loop: score = 0.9278 &gt;= 0.65]</text>
+
+  <!-- Step 7a: Engine -> Agent (Early Abort Alert) -->
+  <line x1="604" y1="432" x2="142" y2="432" stroke="#be123c" stroke-width="2" marker-end="url(#sArrCrimson)"/>
+  <circle cx="162" cy="418" r="9.5" fill="#be123c"/><text x="162" y="421.5" text-anchor="middle" class="step-num">7a</text>
+  <text x="178" y="422" class="msg" fill="#9f1239">ALERT: early_abort_and_reroute (26.9 ms · stops silent stall burn)</text>
+
+  <!-- Horizontal dashed divider between alt branches -->
+  <line x1="44" y1="451" x2="976" y2="451" stroke="#475569" stroke-width="1.3" stroke-dasharray="6 4"/>
+
+  <!-- Bottom ALT region (Healthy Progression -> Post-Flight Claim Grounding) -->
+  <rect x="45" y="452" width="930" height="121" fill="#ecfdf5" opacity="0.55"/>
+  <text x="60" y="470" class="mono guard" fill="#047857">[Healthy Progression: score = 0.0000 &lt; 0.65  -&gt;  Phase 3 Post-Flight Grounding]</text>
+
+  <!-- Step 7b: Agent -> JSONL (Draft Claims & END_STATE) -->
+  <line x1="136" y1="498" x2="358" y2="498" stroke="#0369a1" stroke-width="1.8" marker-end="url(#sArrBlue)"/>
+  <circle cx="156" cy="484" r="9.5" fill="#0369a1"/><text x="156" y="487.5" text-anchor="middle" class="step-num">7b</text>
+  <text x="172" y="488" class="msg">write draft claims &amp; END_STATE:</text>
+
+  <!-- Step 8: Engine -> Slab (Ground Claims vs NS_LINES + NS_ONTOLOGY) -->
+  <line x1="616" y1="524" x2="843" y2="524" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#sArrViolet)"/>
+  <circle cx="636" cy="510" r="9" fill="#6d28d9"/><text x="636" y="513.5" text-anchor="middle" class="step-num">8</text>
+  <text x="651" y="514" class="msg">ground: NS_LINES + NS_ONTOLOGY</text>
+
+  <!-- Step 9: Slab --> Engine (Return Grounded Contradictions) -->
+  <line x1="849" y1="554" x2="622" y2="554" stroke="#047857" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#sArrGreen)"/>
+  <circle cx="636" cy="540" r="9" fill="#047857"/><text x="636" y="543.5" text-anchor="middle" class="step-num">9</text>
+  <text x="651" y="544" class="msg" fill="#065f46">3/3 errors · 21/26 drifts (34–75 ms)</text>
+
+  <!-- ===================================================================== -->
+  <!-- PHASE 4: RESIDUAL EPISODE LOGGING & CERTIFICATION LOOP (Y: 590..660)  -->
+  <!-- ===================================================================== -->
+  <!-- Step 10: Engine -> JEPA Store -->
+  <line x1="616" y1="606" x2="1078" y2="606" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#sArrViolet)"/>
+  <circle cx="636" cy="592" r="9" fill="#6d28d9"/><text x="636" y="595.5" text-anchor="middle" class="step-num">10</text>
+  <text x="651" y="596" class="msg">append 5-field episode (s_t, intent, ŝ_next, s_next, Δ surprise)</text>
+
+  <!-- Step 11: JEPA & Ontology --> Slab (Closed Loop Update) -->
+  <line x1="1084" y1="640" x2="861" y2="640" stroke="#b45309" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#sArrAmber)"/>
+  <circle cx="876" cy="626" r="9" fill="#b45309"/><text x="876" y="629.5" text-anchor="middle" class="step-num">11</text>
+  <text x="891" y="630" class="msg" fill="#92400e">JEPA (&lt;1 s) + certified rules</text>
+
+  <!-- Bottom Participant Footers (UML standard mirrored boxes) -->
+  <rect x="30" y="660" width="200" height="32" rx="6" fill="#f0f9ff" stroke="#0369a1" stroke-width="1.2"/>
+  <text x="130" y="680" text-anchor="middle" class="actor-title" fill="#0c4a6e">Frontier Agent</text>
+
+  <rect x="265" y="660" width="200" height="32" rx="6" fill="#f8fafc" stroke="#475569" stroke-width="1.2"/>
+  <text x="365" y="680" text-anchor="middle" class="actor-title">Local JSONL Log</text>
+
+  <rect x="510" y="660" width="200" height="32" rx="6" fill="#ecfdf5" stroke="#047857" stroke-width="1.2"/>
+  <text x="610" y="680" text-anchor="middle" class="actor-title" fill="#064e3b">Steppewatch Engine</text>
+
+  <rect x="755" y="660" width="200" height="32" rx="6" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.2"/>
+  <text x="855" y="680" text-anchor="middle" class="actor-title" fill="#4c1d95">Pinned INT8 Slab</text>
+
+  <rect x="990" y="660" width="200" height="32" rx="6" fill="#fffbeb" stroke="#b45309" stroke-width="1.2"/>
+  <text x="1090" y="680" text-anchor="middle" class="actor-title" fill="#78350f">JEPA &amp; Ontology</text>
+
+  <!-- Provenance Strip -->
+  <rect x="20" y="702" width="1180" height="28" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="34" y="720" class="mono footer-txt">VERIFIED NOV 21, 2026 · 0.0 MiB GPU VRAM · 0 REBINDS · PROOF STEP B CALIBRATED (NS_LINES ISOLATED + BARE ACK FILTER)</text>
+  <text x="1186" y="720" text-anchor="end" class="mono footer-txt" fill="#0369a1">MIT · github.com/djcdevelopment/steppewatch</text>
 </svg>

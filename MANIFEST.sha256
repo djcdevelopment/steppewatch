@@ -1,7 +1,7 @@
 52a2eb4ca2ff4a73f972dfdff7c25c2c3f4b4a6c79b70d435c3cd1158116fe9c  ./AGENTS.md
 2654f2b1c8a9b7dd41455e656b359c5b46b9eff427f3b08ccdebb15bd0a5157f  ./COOKBOOK-MAC-M2.md
-f9c5d2bb75ede17a14752ebb4f029b71036c81a08726976593f9bd81d97a0ef7  ./docs/architecture/steppewatch-dual-loop.svg
-788a62040dcd06633715e268089c3cd8f872bc380cbb7c48176ea5146e6c6861  ./docs/architecture/steppewatch-slab-and-residuals.svg
+e4a778ff78e3f2c2b88a599d2d230f7e1aa8cccc8bcf3c2fe5efd4f6c723f971  ./docs/architecture/steppewatch-dual-loop.svg
+cc7d9ad33becbff498393a2eb920d1c47ecf170d37827f2051bc1c5ff43a8206  ./docs/architecture/steppewatch-slab-and-residuals.svg
 6efec56fea717bc8aadd41afbc801466e48b8f524b998c9cfdbdc50500baa89c  ./docs/EXPLAINER-BRIEF-NOTEBOOKLM.md
 5e3a3d7e558417aa1027d7af4dab2cd3522031b8ce2327279b501d974a936018  ./.gitignore
 799a08e0f766a2936661ad3053a44f8f5bee66c086fabc24758fc84d9fdfcd39  ./LICENSE
