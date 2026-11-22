@@ -122,6 +122,7 @@ If you use NVIDIA's Apache-2.0 open-source [**`NVIDIA/auto-ontology`**](https://
 | File | Purpose |
 |---|---|
 | [`WORKSHOP.md`](WORKSHOP.md) | **Guided 15-Minute JEPA Self-Discovery Workshop** — Copy-paste interactive agent prompt + 4 hands-on checkpoints using your own real transcripts (X-Ray -> train real JEPA -> hash vs. MiniLM A/B -> builder challenges). |
+| [`LOCAL-POWER-PACK-M2.md`](LOCAL-POWER-PACK-M2.md) | **24 GB Apple M2 Local Power Pack** — Bandwidth-honest guide to attention-heavy local models (`ModernBERT` / `Qwen3-Embedding` + cross-attention `Qwen3-Reranker` + `mlx-lm` speculative / native-MTP `MiMo-7B` & solo `Qwen3.5-35B-A3B` MoE). |
 | [`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md) | **Apple M2 Builder's Cookbook** — Step-by-step guide tailored to 24 GB unified-memory Macs (`Mac14,7`), ANE vs. `MLX` Metal GPU physics, transcript paths, and local JEPA data collection. |
 | [`AGENTS.md`](AGENTS.md) | **Agent Self-Tap Protocol** — Machine-first guide for Claude Code, Codex CLI, Hermes, and subagents to bootstrap, self-check, and supervise safely in JSON. |
 | [`PAPER.md`](PAPER.md) | **Technical Preprint (`v1.1`)** — Formal architecture, UML sequence diagram, live Arrow Lake NPU benchmarks (Proof A & B), Apple Silicon mapping, and `NVIDIA/auto-ontology` interop. |
