@@ -49,11 +49,14 @@ pip install -r requirements-m2.txt
 # 1. Benchmark your own CPU vs. Metal GPU (up to 262,144 vectors) + test thrash & claim grounding
 python3 scripts/01_see_the_math_m2.py --repo /path/to/any/local/repo
 
-# 2. Inspect your own active Claude Code (+ subagents), Codex CLI, or Hermes logs read-only
-python3 scripts/02_watch_frontier_agents.py --once
+# 2. X-Ray your OWN recent Claude Code / Codex / Hermes transcripts read-only & export real JEPA data
+python3 scripts/04_xray_my_sessions.py --max-sessions 25 --export-episodes episodes/my_history.jsonl
 
-# 3. Watch a tiny local JEPA predictor train on 5-field residual episodes in < 1 second
-python3 scripts/03_train_tiny_jepa.py --demo-synthetic
+# 3. Train your personal tiny local JEPA on YOUR real agent history in < 1 second
+python3 scripts/03_train_tiny_jepa.py --episodes episodes/my_history.jsonl --out checkpoints/my_real_jepa.npz
+
+# 4. Watch live active sessions & subagents using your newly trained local checkpoint
+python3 scripts/02_watch_frontier_agents.py --once --jepa-checkpoint checkpoints/my_real_jepa.npz
 ```
 👉 **Running on an Apple M2/M3/M4 Mac?** Follow the step-by-step **[`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md)** — it explains unified memory vs. Neural Engine vs. `MLX` Metal GPU in plain English and shows exactly where Claude Code, Codex CLI, and Hermes already save their local JSONL logs on macOS.
 
@@ -127,4 +130,5 @@ If you use NVIDIA's Apache-2.0 open-source [**`NVIDIA/auto-ontology`**](https://
 | [`scripts/01_see_the_math_m2.py`](scripts/01_see_the_math_m2.py) | **Hardware Benchmark & Proof** — Batched `[Q, 384] @ [384, 262144]` slab timing, thrash separation, and local repo claim grounding. |
 | [`scripts/02_watch_frontier_agents.py`](scripts/02_watch_frontier_agents.py) | **Live Read-Only Watcher (`--json` supported)** — Tails Claude Code (+ subagents), Codex, and Hermes JSONL logs, filters bare tool-ack stubs, flags loops/stalls, and logs 5-field episodes. |
 | [`scripts/03_train_tiny_jepa.py`](scripts/03_train_tiny_jepa.py) | **Tiny Local JEPA Trainer** — Trains a compact `384-D` latent state + stall-risk MLP predictor on collected episodes (`--demo-synthetic` supported) and saves a `.npz` checkpoint. |
+| [`scripts/04_xray_my_sessions.py`](scripts/04_xray_my_sessions.py) | **Retrospective Session X-Ray (`--json` supported)** — Replays `W=5` sliding windows across your existing Claude/Codex/Hermes history to spot past stall loops, rank intent-drift surprises, and export real 5-field JEPA training data immediately. |
 | [`MANIFEST.sha256`](MANIFEST.sha256) | Cryptographic SHA-256 provenance manifest for all repository files. |
