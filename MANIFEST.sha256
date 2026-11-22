@@ -1,4 +1,4 @@
-c6cadca263bc3bb4aaeadcc768afd9ffc434dbabf4aca350d9d1fdf47f6b06d9  ./AGENTS.md
+30db23ffdb9961a729bffcddbe6851dc35c85e11d47860266acbf2dae4dbf65d  ./AGENTS.md
 ef4ae3a25cc88f8ef990275d2864a3ae6a073415f43b566a0765ae22254b3b75  ./COOKBOOK-MAC-M2.md
 e4a778ff78e3f2c2b88a599d2d230f7e1aa8cccc8bcf3c2fe5efd4f6c723f971  ./docs/architecture/steppewatch-dual-loop.svg
 cc7d9ad33becbff498393a2eb920d1c47ecf170d37827f2051bc1c5ff43a8206  ./docs/architecture/steppewatch-slab-and-residuals.svg
@@ -6,7 +6,7 @@ ad104d0e44afb31aa6653d08bbb8a91c6d73d1980e8954796ea5b783339a8da8  ./docs/EXPLAIN
 5e3a3d7e558417aa1027d7af4dab2cd3522031b8ce2327279b501d974a936018  ./.gitignore
 799a08e0f766a2936661ad3053a44f8f5bee66c086fabc24758fc84d9fdfcd39  ./LICENSE
 f92cc75a3751adbcff3505e8ddbf77e67c39467574498419f15e151116fef0cc  ./PAPER.md
-6154354f7541d3f4dcdab370234cc92ba0653a30be0598e16e601c9f3e190551  ./README.md
+c19dea1b8347ab8b1f6bf4434cd16b5153c148b59620f9b574b85a6e633b71ac  ./README.md
 31ac63e468cb9c177a486adf07566a68709bc51bc3419b42dfcdebff151fce60  ./requirements-m2.txt
 4f4b1f8214c3d5f454bd68e71203682755c1f09998016c1366fecdfe34d1d91e  ./rules/frontier-agent-watchdog-skill.md
 7b01cd22593a9aa27bdb0a147e7da8433f21fca36b2715b49ea5fdd24c53c75e  ./scripts/01_see_the_math_m2.py
@@ -15,3 +15,4 @@ f92cc75a3751adbcff3505e8ddbf77e67c39467574498419f15e151116fef0cc  ./PAPER.md
 cf9638707ab5d5e30c265c0a1734719435880c5b479a5b9df1b65f06e8b40863  ./scripts/04_xray_my_sessions.py
 7fdcf6c4351fccbf42f696b5b1e2a3967cb5f5012faeeadb4ed2a1556e23dd1b  ./scripts/local_embedder.py
 72ca5858a57433489c9ec69b7670fbfc6702fe93d66061bc25cef2e6e42d84b4  ./scripts/self_tap.py
+56efaf9946a32fbc0b248fe07bae854d6ba44604c3f51596fe25f596a874f420  ./WORKSHOP.md

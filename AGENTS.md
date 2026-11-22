@@ -40,9 +40,9 @@ Read and apply [`rules/frontier-agent-watchdog-skill.md`](rules/frontier-agent-w
 
 Emit `INTENT:` at slice start, `STUCK:` instead of paraphrasing the same plan >2 turns, grounded `path:line` citations only, and a compact 3-line `END_STATE:` receipt on completion.
 
-### Step 3: X-Ray Existing Transcripts & Bootstrap Real JEPA Data Immediately
+### Step 3: X-Ray Existing Transcripts & Run the Guided Workshop
 
-Instead of waiting days to accumulate episodes, mine the user's existing local Claude Code / Codex / Hermes transcript archive read-only in `< 5 s` and train on their real history immediately:
+Instead of waiting days to accumulate episodes, mine the user's existing local Claude Code / Codex / Hermes transcript archive read-only in `< 5 s`, train on their real history immediately, and follow the 4 interactive discovery checkpoints in [`WORKSHOP.md`](WORKSHOP.md):
 
 ```bash
 python3 scripts/04_xray_my_sessions.py --max-sessions 25 --export-episodes episodes/my_history.jsonl --json

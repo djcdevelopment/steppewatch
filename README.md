@@ -60,10 +60,10 @@ python3 scripts/02_watch_frontier_agents.py --once --jepa-checkpoint checkpoints
 ```
 👉 **Running on an Apple M2/M3/M4 Mac?** Follow the step-by-step **[`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md)** — it explains unified memory vs. Neural Engine vs. `MLX` Metal GPU in plain English and shows exactly where Claude Code, Codex CLI, and Hermes already save their local JSONL logs on macOS.
 
-### Option C — Let Your Own Agent Self-Tap & Walk You Through It
-Already live inside Claude Code, Codex CLI, or Hermes? Paste this single prompt:
+### Option C — Guided 15-Minute Self-Discovery JEPA Workshop (Let Your Agent Drive)
+Already live inside Claude Code, Codex CLI, or Hermes? Open **[`WORKSHOP.md`](WORKSHOP.md)** for the full prefilled 4-stage self-discovery prompt (X-Ray your own real transcripts -> train your first real JEPA -> A/B lexical hash vs. `all-MiniLM-L6-v2` -> builder upgrade challenge), or start with this quick self-tap check:
 
-> *"Clone `https://github.com/djcdevelopment/steppewatch.git`, read `AGENTS.md`, run `python3 scripts/self_tap.py --repo .`, and show me what my local hardware can do (don't change any global configs without asking me)."*
+> *"Clone `https://github.com/djcdevelopment/steppewatch.git`, read `AGENTS.md` and `WORKSHOP.md`, run `python3 scripts/self_tap.py --repo .`, and walk me through what my local hardware can do (don't change any global configs without asking me)."*
 
 Everything runs **read-only on local transcripts**, touches **zero API keys**, and gives you clean JSON output ([`AGENTS.md`](AGENTS.md)).
 
@@ -121,6 +121,7 @@ If you use NVIDIA's Apache-2.0 open-source [**`NVIDIA/auto-ontology`**](https://
 
 | File | Purpose |
 |---|---|
+| [`WORKSHOP.md`](WORKSHOP.md) | **Guided 15-Minute JEPA Self-Discovery Workshop** — Copy-paste interactive agent prompt + 4 hands-on checkpoints using your own real transcripts (X-Ray -> train real JEPA -> hash vs. MiniLM A/B -> builder challenges). |
 | [`COOKBOOK-MAC-M2.md`](COOKBOOK-MAC-M2.md) | **Apple M2 Builder's Cookbook** — Step-by-step guide tailored to 24 GB unified-memory Macs (`Mac14,7`), ANE vs. `MLX` Metal GPU physics, transcript paths, and local JEPA data collection. |
 | [`AGENTS.md`](AGENTS.md) | **Agent Self-Tap Protocol** — Machine-first guide for Claude Code, Codex CLI, Hermes, and subagents to bootstrap, self-check, and supervise safely in JSON. |
 | [`PAPER.md`](PAPER.md) | **Technical Preprint (`v1.1`)** — Formal architecture, UML sequence diagram, live Arrow Lake NPU benchmarks (Proof A & B), Apple Silicon mapping, and `NVIDIA/auto-ontology` interop. |
