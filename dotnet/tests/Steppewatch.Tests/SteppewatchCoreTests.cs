@@ -28,6 +28,23 @@ public sealed class SteppewatchCoreTests
         Assert.Equal(expected, actual);
     }
 
+    // Quantizer extremes: q=+127 becomes u8 255, which saturates a naive vpmaddubsw pair (2*255*127 > int16.MaxValue).
+    // Only exercises the AVX2 fallback on hosts without AVX-VNNI (e.g. Win10 + Hyper-V on Alder Lake).
+    [Theory]
+    [InlineData(127, 127)]
+    [InlineData(127, -127)]
+    [InlineData(-127, 127)]
+    [InlineData(-127, -127)]
+    public void DotInt8Exact_IsExactAtQuantizerExtremes(int q, int w)
+    {
+        int dim = Hash384Embedder.EmbedDim;
+        var qU8 = Enumerable.Repeat((byte)(q + 128), dim).ToArray();
+        var wI8 = Enumerable.Repeat((sbyte)w, dim).ToArray();
+
+        int actual = QuantizedSlabBench.DotInt8Exact(qU8, wI8, dim * w);
+        Assert.Equal(dim * q * w, actual);
+    }
+
     [Fact]
     public void DotFp32Simd_MatchesScalarReferenceWithinTolerance()
     {

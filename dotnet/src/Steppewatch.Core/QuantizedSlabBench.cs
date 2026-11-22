@@ -112,10 +112,10 @@ public static class QuantizedSlabBench
     {
         int len = qUnsignedOffset128.Length;
         int i = 0;
-        int total = 0;
 
         if (AvxVnni.IsSupported && len >= 32)
         {
+            // vpdpbusd: u8 x s8 products, 4-way sums accumulated straight into int32 (no intermediate saturation).
             Vector256<int> acc = Vector256<int>.Zero;
             for (; i <= len - 32; i += 32)
             {
@@ -124,29 +124,42 @@ public static class QuantizedSlabBench
                 acc = AvxVnni.MultiplyWideningAndAdd(acc, qv, wv);
             }
 
-            total = Vector256.Sum(acc);
+            int total = Vector256.Sum(acc);
+            for (; i < len; i++)
+            {
+                total += qUnsignedOffset128[i] * wSigned[i];
+            }
+
+            return total - (128 * wColSum);
         }
-        else if (Avx2.IsSupported && len >= 32)
+
+        int signedTotal = 0;
+        if (Avx2.IsSupported && len >= 32)
         {
+            // vpmaddubsw saturates each u8*s8 pair-sum to int16. Fed the offset-128 query directly, a pair reaches
+            // 2*255*127 = 64,770 and silently clips. Instead undo the offset (q ^ 0x80 -> signed q) and move q's sign
+            // onto w, so the unsigned operand is |q| <= 127: worst-case pair 2*127*127 = 32,258 fits int16 exactly.
+            // Precondition (guaranteed by both quantizers, which clamp to +/-127): q-128 and w lie in [-127, 127].
             Vector256<int> acc = Vector256<int>.Zero;
             Vector256<short> ones = Vector256.Create((short)1);
+            Vector256<byte> bias = Vector256.Create((byte)0x80);
             for (; i <= len - 32; i += 32)
             {
-                Vector256<byte> qv = Vector256.LoadUnsafe(in qUnsignedOffset128[i]);
+                Vector256<sbyte> qs = Avx2.Xor(Vector256.LoadUnsafe(in qUnsignedOffset128[i]), bias).AsSByte();
                 Vector256<sbyte> wv = Vector256.LoadUnsafe(in wSigned[i]);
-                Vector256<short> prod16 = Avx2.MultiplyAddAdjacent(qv, wv);
+                Vector256<short> prod16 = Avx2.MultiplyAddAdjacent(Avx2.Abs(qs), Avx2.Sign(wv, qs));
                 acc = Avx2.Add(acc, Avx2.MultiplyAddAdjacent(prod16, ones));
             }
 
-            total = Vector256.Sum(acc);
+            signedTotal = Vector256.Sum(acc);
         }
 
         for (; i < len; i++)
         {
-            total += qUnsignedOffset128[i] * wSigned[i];
+            signedTotal += (qUnsignedOffset128[i] - 128) * wSigned[i];
         }
 
-        return total - (128 * wColSum);
+        return signedTotal;
     }
 
     public static float DotFp32Simd(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
