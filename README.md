@@ -87,6 +87,32 @@ dotnet run --project dotnet/src/Steppewatch.Cli/Steppewatch.Cli.csproj -c Releas
 
 ---
 
+## Hermes default and named profiles
+
+The watcher, X-Ray and self-tap discover `~/.hermes/sessions/*.jsonl`, the legacy
+`~/.hermes/logs/sessions/*.jsonl`, and `~/.hermes/profiles/*/sessions/*.jsonl`.
+Named profiles carry a `hermes:<profile>` source label; the default remains `hermes`.
+Each profile's `state.db` supplies sessions without a matching JSONL filename,
+using SQLite `mode=ro` and `query_only` on a private workspace-local DB/WAL copy.
+The capture retries up to three times if source file identity/size/timestamps
+change; SHM is reconstructed only in the private copy. Copies are removed on exit.
+On macOS, APFS clones keep large stores cheap; without cloning, captures above
+256 MiB are skipped with a warning. Source databases/sidecars are never opened by
+SQLite or written. No source messages or database rows are changed.
+
+Override only the Hermes root (not Claude/Codex paths) with `--hermes-home`:
+
+```bash
+python3 scripts/04_xray_my_sessions.py --hermes-home /path/to/.hermes --max-sessions 100 --force-hash --json
+python3 scripts/02_watch_frontier_agents.py --hermes-home /path/to/.hermes --max-sessions 100 --force-hash --once --json --episodes episodes/hermes.jsonl
+python3 -m unittest discover -s tests -v
+```
+
+`--max-sessions` is shared across all sources. X-Ray excludes sessions with fewer
+than three substantive steps and returns only its top ten in `top_sessions`;
+`sessions_by_source` counts all sessions actually evaluated. Discovery and tests
+require no additional dependencies or network access.
+
 ## How to Read Your Own Numbers (No ML PhD Required)
 
 When `01_see_the_math_m2.py` finishes on your machine, you'll see three concrete proofs:

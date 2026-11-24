@@ -86,6 +86,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Read-only retrospective X-Ray of your real Claude Code, Codex, and Hermes sessions."
     )
+    parser.add_argument("--hermes-home", type=Path, default=None, help="Hermes root containing sessions, state.db and profiles (default: ~/.hermes)")
     parser.add_argument("--max-sessions", type=int, default=20, help="Max recent local transcripts to scan")
     parser.add_argument("--export-episodes", type=Path, default=None, help="Optional NDJSON path to seed real JEPA training episodes")
     parser.add_argument("--json", action="store_true", dest="json_mode", help="Emit structured JSON output")
@@ -95,7 +96,7 @@ def main() -> int:
     t0 = time.perf_counter()
     watcher = import_module("02_watch_frontier_agents")
     embedder = LocalEmbedder(force_hash=args.force_hash)
-    targets: List[Tuple[str, Path]] = watcher.discover_recent_transcripts(max_files=args.max_sessions)
+    targets = watcher.discover_recent_transcripts(max_files=args.max_sessions, hermes_home=args.hermes_home)
 
     rows: List[Dict[str, Any]] = []
     exported: List[Dict[str, Any]] = []
@@ -178,6 +179,7 @@ def main() -> int:
         "embedder": embedder.backend_name,
         "elapsed_ms": elapsed_ms,
         "sessions_scanned": len(rows),
+        "sessions_by_source": {source: sum(r["source"] == source for r in rows) for source in sorted({r["source"] for r in rows})},
         "sessions_flagged": len(flagged_rows),
         "bare_tool_acks_filtered": total_acks_filtered,
         "estimated_post_stall_steps": total_post_steps,

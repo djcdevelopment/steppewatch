@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
 import time
 from pathlib import Path
@@ -23,13 +24,13 @@ from local_embedder import LocalEmbedder, detect_agent_thrash, probe_hardware  #
 from importlib import import_module  # noqa: E402
 
 
-def discover_transcripts_safe(max_files: int = 8) -> List[Dict[str, Any]]:
+def discover_transcripts_safe(max_files: int = 8, hermes_home: Path | None = None) -> List[Dict[str, Any]]:
     watcher = import_module("02_watch_frontier_agents")
-    items = watcher.discover_recent_transcripts(max_files=max_files)
+    items = watcher.discover_recent_transcripts(max_files=max_files, hermes_home=hermes_home)
     out: List[Dict[str, Any]] = []
     for source, path in items:
         try:
-            st = path.stat()
+            st = (path.database if isinstance(path, watcher.DatabaseSession) else path).stat()
             out.append(
                 {
                     "source": source,
@@ -77,6 +78,7 @@ def run_fast_self_check(embedder: LocalEmbedder) -> Dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Steppewatch agent self-tap probe (JSON output).")
+    parser.add_argument("--hermes-home", type=Path, default=None, help="Hermes root containing sessions, state.db and profiles (default: ~/.hermes)")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Target workspace repository path")
     parser.add_argument("--force-hash", action="store_true", help="Use zero-download hash384 embedder")
     args = parser.parse_args()
@@ -84,12 +86,13 @@ def main() -> int:
     hw = probe_hardware()
     embedder = LocalEmbedder(force_hash=args.force_hash)
     self_check = run_fast_self_check(embedder)
-    transcripts = discover_transcripts_safe(max_files=8)
+    transcripts = discover_transcripts_safe(max_files=8, hermes_home=args.hermes_home)
 
     repo_str = str(args.repo.resolve())
     episodes_path = str(REPO_ROOT / "episodes" / "transitions.jsonl")
     ckpt_path = str(REPO_ROOT / "checkpoints" / "local_jepa.npz")
     hash_flag = " --force-hash" if args.force_hash else ""
+    hermes_flag = f" --hermes-home {shlex.quote(str(args.hermes_home))}" if args.hermes_home else ""
 
     payload = {
         "schema": "steppewatch-self-tap.v1",
@@ -106,7 +109,7 @@ def main() -> int:
         "discovered_transcripts": transcripts,
         "next_commands": {
             "benchmark_local_silicon": f"python3 {REPO_ROOT / 'scripts' / '01_see_the_math_m2.py'}{hash_flag} --repo {repo_str}",
-            "watch_subagents_once_json": f"python3 {REPO_ROOT / 'scripts' / '02_watch_frontier_agents.py'}{hash_flag} --once --json --episodes {episodes_path}",
+            "watch_subagents_once_json": f"python3 {REPO_ROOT / 'scripts' / '02_watch_frontier_agents.py'}{hash_flag}{hermes_flag} --once --json --episodes {episodes_path}",
             "train_jepa_demo": f"python3 {REPO_ROOT / 'scripts' / '03_train_tiny_jepa.py'}{hash_flag} --demo-synthetic --out {ckpt_path}",
         },
     }
