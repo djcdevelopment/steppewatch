@@ -42,7 +42,7 @@ Emit `INTENT:` at slice start, `STUCK:` instead of paraphrasing the same plan >2
 
 ### Step 3: X-Ray Existing Transcripts & Run the Guided Workshop
 
-Instead of waiting days to accumulate episodes, mine the user's existing local Claude Code / Codex / Hermes transcript archive read-only in `< 5 s`, train on their real history immediately, and follow the 4 interactive discovery checkpoints in [`WORKSHOP.md`](WORKSHOP.md):
+Instead of waiting days to accumulate episodes, mine the user's existing local Claude Code / Codex / Hermes transcript archive read-only (`< 2 s` with `--force-hash`; single-pass batched MiniLM scales with session count), train on their real history immediately, and follow the 4 interactive discovery checkpoints in [`WORKSHOP.md`](WORKSHOP.md):
 
 ```bash
 python3 scripts/04_xray_my_sessions.py --max-sessions 25 --export-episodes episodes/my_history.jsonl --json

@@ -19,13 +19,21 @@ import argparse
 import glob
 import json
 import re
+import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from hermes_transcripts import DatabaseSession, Transcript, discover_hermes, read_database_session
+from hermes_transcripts import (
+    DatabaseSession,
+    Transcript,
+    discover_hermes,
+    read_database_session,
+    read_database_sessions_batch,
+)
 
 from local_embedder import (
     LocalEmbedder,
@@ -183,9 +191,13 @@ def parse_jsonl_transcript(
     path: Transcript,
     max_lines: int = 400,
     max_tail_bytes: int = 2 * 1024 * 1024,
+    preloaded_records: Optional[Tuple[List[Dict[str, Any]], int]] = None,
 ) -> Dict[str, Any]:
     """Extract normalized intent, substantive agent steps, request boundaries, and file hints."""
-    if isinstance(path, DatabaseSession):
+    if preloaded_records is not None:
+        tail, line_count = preloaded_records
+        head_intent = ""
+    elif isinstance(path, DatabaseSession):
         tail, line_count = read_database_session(path, max_lines)
         head_intent = ""
     else:
@@ -356,6 +368,23 @@ def build_residual_episode(
     }
 
 
+def preload_database_sessions(
+    targets: List[Tuple[str, Transcript]],
+    max_lines: int,
+) -> Dict[DatabaseSession, Tuple[List[Dict[str, Any]], int]]:
+    """Batch-read all DatabaseSession targets grouped by state.db (1 capture per DB)."""
+    grouped: Dict[Path, List[DatabaseSession]] = defaultdict(list)
+    for _, target in targets:
+        if isinstance(target, DatabaseSession):
+            grouped[target.database].append(target)
+    preloaded: Dict[DatabaseSession, Tuple[List[Dict[str, Any]], int]] = {}
+    for db_path, sessions in grouped.items():
+        batch = read_database_sessions_batch(db_path, [s.session_id for s in sessions], max_lines)
+        for sess in sessions:
+            preloaded[sess] = batch.get(sess.session_id, ([], 0))
+    return preloaded
+
+
 def evaluate_once(
     embedder: LocalEmbedder,
     targets: List[Tuple[str, Transcript]],
@@ -368,8 +397,10 @@ def evaluate_once(
     """Evaluate all target transcripts once and append new residual episodes."""
     results: List[Dict[str, Any]] = []
     episodes_path.parent.mkdir(parents=True, exist_ok=True)
+    db_preloaded = preload_database_sessions(targets, max_lines=400)
     for source, path in targets:
-        parsed = parse_jsonl_transcript(path)
+        pre = db_preloaded.get(path) if isinstance(path, DatabaseSession) else None
+        parsed = parse_jsonl_transcript(path, preloaded_records=pre)
         key = str(path)
         if parsed["line_count"] == last_seen_lines.get(key):
             continue
@@ -436,11 +467,25 @@ def main() -> int:
     parser.add_argument("--once", action="store_true", help="Scan once and exit")
     parser.add_argument("--json", action="store_true", dest="json_mode", help="Emit machine-readable JSON output for agent self-tap")
     parser.add_argument("--force-hash", action="store_true", help="Use zero-download hash384 embedder")
+    parser.add_argument("--offline", action="store_true", help="Load local models from cache only; forbid Hugging Face network calls")
     args = parser.parse_args()
 
-    embedder = LocalEmbedder(force_hash=args.force_hash)
+    if args.trace is not None:
+        trace_path = args.trace.expanduser()
+        if not trace_path.is_file():
+            msg = f"Explicit --trace file not found: {args.trace}"
+            if args.json_mode:
+                print(json.dumps({"schema": "steppewatch-watch-report.v1", "error": msg, "results": []}, indent=2))
+            else:
+                print(f"Error: {msg}", file=sys.stderr)
+            return 1
+        args.trace = trace_path
+
+    embedder = LocalEmbedder(force_hash=args.force_hash, offline=args.offline)
     if not args.json_mode:
         print(f"Steppewatch active | embedder={embedder.backend_name} | episodes={args.episodes}")
+        if embedder.fallback_reason:
+            print(f"[note] {embedder.fallback_reason}")
 
     last_seen_lines: Dict[str, int] = {}
     while True:

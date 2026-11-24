@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -192,6 +193,7 @@ def run_repo_claim_grounding(
     max_files: int = 120,
     use_rerank: bool = False,
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    offline: bool = False,
 ) -> Dict[str, Any]:
     """Index local files and surface candidate source evidence for a synthetic claim."""
     t0 = time.perf_counter()
@@ -280,7 +282,9 @@ def run_repo_claim_grounding(
             from sentence_transformers import CrossEncoder  # type: ignore
 
             t_r0 = time.perf_counter()
-            ce = CrossEncoder(rerank_model)
+            local_only = offline or os.environ.get("HF_HUB_OFFLINE") == "1" or os.environ.get("TRANSFORMERS_OFFLINE") == "1"
+            ce_kwargs: Dict[str, Any] = {"local_files_only": True} if local_only else {}
+            ce = CrossEncoder(rerank_model, **ce_kwargs)
             pairs = [(false_claim, entries[i]["text"]) for i in pool_idx]
             ce_scores = np.asarray(ce.predict(pairs), dtype=np.float32)
             rerank_ms = round((time.perf_counter() - t_r0) * 1000.0, 2)
@@ -340,6 +344,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="See the local silicon math for agent supervision.")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Local repo directory to index for Part C")
     parser.add_argument("--force-hash", action="store_true", help="Skip SentenceTransformer download; use fast hash384")
+    parser.add_argument("--offline", action="store_true", help="Load local models from cache only; forbid Hugging Face network calls")
     parser.add_argument("--rerank", action="store_true", help="Optional bounded CrossEncoder reranking over top-20 hybrid candidates")
     parser.add_argument(
         "--rerank-model",
@@ -355,12 +360,20 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    repo_dir = args.repo.expanduser().resolve()
+    if not repo_dir.is_dir():
+        print(f"Error: --repo path does not exist or is not a directory: {args.repo}", file=sys.stderr)
+        return 1
+
     hw = probe_hardware()
-    embedder = LocalEmbedder(force_hash=args.force_hash)
+    embedder = LocalEmbedder(force_hash=args.force_hash, offline=args.offline)
 
     print("=== Hardware & Local Backends ===")
     print(json.dumps(hw, indent=2))
-    print(f"Active 384-D Embedder: {embedder.backend_name}\n")
+    print(f"Active 384-D Embedder: {embedder.backend_name}")
+    if embedder.fallback_reason:
+        print(f"[note] {embedder.fallback_reason}")
+    print()
 
     print("=== Part A: Random-Matrix Slab Microbenchmark ([Q, 384] @ [384, N]) ===")
     mm = bench_matmul_backends()
@@ -386,12 +399,13 @@ def main() -> int:
             f"new_targets={res['tail_new_targets']}, {res['latency_ms']} ms)"
         )
 
-    print(f"\n=== Part C: Hybrid Zero-Token Candidate Grounding on {args.repo} ===")
+    print(f"\n=== Part C: Hybrid Zero-Token Candidate Grounding on {repo_dir} ===")
     grounding = run_repo_claim_grounding(
         embedder,
-        args.repo.resolve(),
+        repo_dir,
         use_rerank=args.rerank,
         rerank_model=args.rerank_model,
+        offline=args.offline,
     )
     if grounding.get("skipped"):
         print(f"  Skipped: {grounding['reason']}")

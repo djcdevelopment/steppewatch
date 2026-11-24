@@ -142,12 +142,14 @@ def main() -> int:
     parser.add_argument("--export-episodes", type=Path, default=None, help="Optional NDJSON path to seed real JEPA training episodes")
     parser.add_argument("--json", action="store_true", dest="json_mode", help="Emit structured JSON output")
     parser.add_argument("--force-hash", action="store_true", help="Use zero-download hash384 embedder")
+    parser.add_argument("--offline", action="store_true", help="Load local models from cache only; forbid Hugging Face network calls")
     args = parser.parse_args()
 
     t0 = time.perf_counter()
     watcher = import_module("02_watch_frontier_agents")
-    embedder = LocalEmbedder(force_hash=args.force_hash)
+    embedder = LocalEmbedder(force_hash=args.force_hash, offline=args.offline)
     targets = watcher.discover_recent_transcripts(max_files=args.max_sessions, hermes_home=args.hermes_home)
+    db_preloaded = watcher.preload_database_sessions(targets, max_lines=600)
 
     rows: List[Dict[str, Any]] = []
     exported: List[Dict[str, Any]] = []
@@ -158,7 +160,8 @@ def main() -> int:
     placeholder_intents_count = 0
 
     for source, path in targets:
-        parsed = watcher.parse_jsonl_transcript(path, max_lines=600)
+        pre = db_preloaded.get(path) if isinstance(path, watcher.DatabaseSession) else None
+        parsed = watcher.parse_jsonl_transcript(path, max_lines=600, preloaded_records=pre)
         steps = parsed["steps"]
         if len(steps) < 3:
             continue
@@ -250,6 +253,7 @@ def main() -> int:
     report = {
         "schema": "steppewatch-session-xray.v1",
         "embedder": embedder.backend_name,
+        "embedder_fallback_reason": embedder.fallback_reason,
         "advisory_only": True,
         "elapsed_ms": elapsed_ms,
         "sessions_scanned": len(rows),
@@ -272,6 +276,15 @@ def main() -> int:
 
     print(f"=== Steppewatch Session X-Ray ({len(rows)} real local transcripts in {elapsed_ms} ms, $0.00 API cost) ===")
     print(f"Embedder                  : {embedder.backend_name}")
+    if embedder.fallback_reason:
+        print(f"[note] {embedder.fallback_reason}")
+    if not rows:
+        print(
+            "No local transcripts with >= 3 substantive steps found under "
+            "~/.claude/projects, ~/.codex/sessions, or ~/.hermes/{sessions,logs/sessions,profiles/*/sessions,state.db}."
+        )
+        print("Try passing --hermes-home <path> or test an explicit file with `python3 scripts/02_watch_frontier_agents.py --trace <file> --once`.")
+        return 0
     print(f"Advisory loop flags       : {len(flagged_rows)} / {len(rows)} (advisory only — inspect before intervening)")
     print(f"Bare tool-acks filtered   : {total_acks_filtered} | compaction wrappers skipped: {total_wrappers_skipped}")
     print(f"Post-flag steps observed  : {total_post_steps} (~{total_post_tokens} char/4 step-summary units; not billing/savings)")

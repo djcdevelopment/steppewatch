@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -12,7 +13,7 @@ from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Sequence, Tuple, Union
 
 
 @dataclass(frozen=True)
@@ -81,8 +82,10 @@ def open_readonly(database: Path):
     database = database.resolve()
     if not database.is_file():
         raise FileNotFoundError(database)
-    # TemporaryDirectory is private (0700), workspace-local, and removed on exit.
-    with tempfile.TemporaryDirectory(prefix=".hermes-read-", dir=Path(__file__).resolve().parents[1]) as tmp:
+    # TemporaryDirectory is private (0700), workspace-local when writable, and removed on exit.
+    repo_root = Path(__file__).resolve().parents[1]
+    temp_parent = repo_root if os.access(repo_root, os.W_OK) else Path(tempfile.gettempdir())
+    with tempfile.TemporaryDirectory(prefix=".hermes-read-", dir=temp_parent) as tmp:
         target = Path(tmp) / "state.db"
         sources = (database, Path(str(database) + "-wal"))
         for _ in range(3):
@@ -144,6 +147,52 @@ def discover_hermes(home: Path, max_files: int) -> List[tuple]:
     return found
 
 
+def _query_session_messages(
+    conn: sqlite3.Connection,
+    session_id: str,
+    max_lines: int,
+    active_clause: str,
+) -> Tuple[List[Dict[str, Any]], int]:
+    where = " WHERE session_id = ?" + active_clause
+    count = conn.execute("SELECT COUNT(*) FROM messages" + where, (session_id,)).fetchone()[0]
+    rows = conn.execute(
+        "SELECT role, content, tool_calls, tool_name FROM messages" + where + " ORDER BY id DESC LIMIT ?",
+        (session_id, max_lines),
+    ).fetchall()
+    records: List[Dict[str, Any]] = []
+    for row in reversed(rows):
+        record = dict(row)
+        if isinstance(record["tool_calls"], str):
+            try:
+                record["tool_calls"] = json.loads(record["tool_calls"])
+            except ValueError:
+                record["tool_calls"] = []
+        records.append(record)
+    return records, count
+
+
+def read_database_sessions_batch(
+    database: Path,
+    session_ids: Sequence[str],
+    max_lines: int,
+) -> Dict[str, Tuple[List[Dict[str, Any]], int]]:
+    """Read multiple sessions from one state.db using a single private capture."""
+    unique_ids = list(dict.fromkeys(session_ids))
+    if not unique_ids:
+        return {}
+    out: Dict[str, Tuple[List[Dict[str, Any]], int]] = {sid: ([], 0) for sid in unique_ids}
+    try:
+        with open_readonly(database) as conn:
+            conn.row_factory = sqlite3.Row
+            columns = {r[1] for r in conn.execute("PRAGMA table_info(messages)")}
+            active = " AND active = 1" if "active" in columns else ""
+            for sid in unique_ids:
+                out[sid] = _query_session_messages(conn, sid, max_lines, active)
+    except (sqlite3.Error, OSError) as exc:
+        warnings.warn(f"Cannot read Hermes store {database}: {exc}")
+    return out
+
+
 def read_database_session(target: DatabaseSession, max_lines: int) -> tuple:
     """Return the bounded active message tail in transcript order, plus total rows."""
     try:
@@ -151,22 +200,7 @@ def read_database_session(target: DatabaseSession, max_lines: int) -> tuple:
             conn.row_factory = sqlite3.Row
             columns = {r[1] for r in conn.execute("PRAGMA table_info(messages)")}
             active = " AND active = 1" if "active" in columns else ""
-            where = " WHERE session_id = ?" + active
-            count = conn.execute("SELECT COUNT(*) FROM messages" + where, (target.session_id,)).fetchone()[0]
-            rows = conn.execute(
-                "SELECT role, content, tool_calls, tool_name FROM messages" + where + " ORDER BY id DESC LIMIT ?",
-                (target.session_id, max_lines),
-            ).fetchall()
-            records: List[Dict[str, Any]] = []
-            for row in reversed(rows):
-                record = dict(row)
-                if isinstance(record["tool_calls"], str):
-                    try:
-                        record["tool_calls"] = json.loads(record["tool_calls"])
-                    except ValueError:
-                        record["tool_calls"] = []
-                records.append(record)
-            return records, count
+            return _query_session_messages(conn, target.session_id, max_lines, active)
     except (sqlite3.Error, OSError) as exc:
         warnings.warn(f"Cannot read Hermes session {target}: {exc}")
         return [], 0

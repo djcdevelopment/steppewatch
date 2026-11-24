@@ -266,9 +266,11 @@ def main() -> int:
     parser.add_argument("--skip-placeholder-intents", action="store_true", help="Exclude episodes whose intent fell back to a placeholder string")
     parser.add_argument("--demo-synthetic", action="store_true", help="Train on synthetic Day-1 demo episodes")
     parser.add_argument("--force-hash", action="store_true", help="Use zero-download hash384 embedder")
+    parser.add_argument("--offline", action="store_true", help="Load local models from cache only; forbid Hugging Face network calls")
+    parser.add_argument("--json", action="store_true", dest="json_mode", help="Emit machine-readable JSON training summary")
     args = parser.parse_args()
 
-    embedder = LocalEmbedder(force_hash=args.force_hash)
+    embedder = LocalEmbedder(force_hash=args.force_hash, offline=args.offline)
     if args.demo_synthetic:
         episodes = build_demo_synthetic_episodes(40)
         source_label = "synthetic_demo (40 episodes)"
@@ -312,8 +314,30 @@ def main() -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(args.out, **weights)
 
+    if args.json_mode:
+        print(
+            json.dumps(
+                {
+                    "schema": "steppewatch-tiny-jepa-train.v1",
+                    "source": source_label,
+                    "embedder": embedder.backend_name,
+                    "embedder_fallback_reason": embedder.fallback_reason,
+                    "split_mode": split_mode,
+                    "human_labeled_count": human_count,
+                    "heuristic_proxy_count": proxy_count,
+                    "placeholder_intents_count": placeholder_count,
+                    "checkpoint_path": str(args.out),
+                    "metrics": metrics,
+                },
+                indent=2,
+            )
+        )
+        return 0
+
     print(f"=== Tiny Local JEPA Training Summary ({source_label}) ===")
     print(f"Embedder       : {embedder.backend_name}")
+    if embedder.fallback_reason:
+        print(f"[note] {embedder.fallback_reason}")
     print(f"Split / Labels : {split_mode} | human_labeled={human_count}, heuristic_proxy={proxy_count}, placeholder_intents={placeholder_count}")
     if human_count == 0 and not args.demo_synthetic:
         print("Note           : Risk targets are uncalibrated heuristic proxy scores until human_label values are populated.")

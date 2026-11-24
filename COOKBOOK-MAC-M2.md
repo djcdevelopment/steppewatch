@@ -67,13 +67,14 @@ python3 scripts/01_see_the_math_m2.py --repo /path/to/one/of/your/repos
    - **The "aha" moment:** Scoring `16` concurrent agent steps or draft claims (`Q=16`) against **`262,144` vectors** takes only **a few milliseconds** locally — faster than a single TCP round-trip to a cloud API.
    - Notice how packing multiple queries together (`Q=8..64`) costs nearly the same wall time as `Q=1`. That's why packing an entire wave of subagents + claims into one matrix multiply scales effortlessly.
 
-2. **Part B — Semantic Thrash & Silent-Stall Detection (`detect_thrash`):**
-   - Runs the exact sliding-window math on two traces:
+2. **Part B — Synthetic 2-Trace Loop Smoke Check (`detect_thrash`):**
+   - Runs the exact sliding-window math on two synthetic traces:
      - A **healthy 5-step debugging trace** (hits an error in the middle, introduces new files/symbols, applies fixes, ends with passing tests -> `thrash_score ≈ 0.0`, `action: continue`).
-     - A **polite paraphrased stall loop** (zero error messages, polite phrasing, re-reading the same design notes 5 times with zero new code targets -> `thrash_score > 0.80`, `action: early_abort_and_reroute`).
+     - A **polite paraphrased stall loop** (zero error messages, polite phrasing, re-reading the same design notes 5 times with zero new code targets -> `thrash_detected = True`, `action: advisory_inspect_loop`).
+   - Treat real-session flags as **advisory inspection triggers**, not automatic agent kill switches.
 
-3. **Part C — Zero-Token Claim Grounding Against Your Own Repo:**
-   - Indexes up to 120 source files in your `--repo`, picks a real symbol from your repo, synthesizes a false agent claim (*"This repo is missing `<RealSymbol>`"*), and checks whether local embedding retrieval immediately flags the exact `file:line` proving the claim false — in milliseconds, at `$0.00` API cost.
+3. **Part C — Hybrid Zero-Token Candidate Grounding Against Your Own Repo:**
+   - Indexes up to 120 source files in your `--repo`, picks a real symbol from your repo, synthesizes a false agent claim (*"This repo is missing `<RealSymbol>`"*), and checks whether hybrid exact-symbol lexical + dense retrieval (plus optional `--rerank` bounded cross-encoder relevance scoring) surfaces the exact `file:line` candidate for inspection — in milliseconds, at `$0.00` API cost.
 
 The script writes a timestamped JSON receipt (`receipts/m2_math_receipt.json`) so you can compare backends after tuning models or quantization.
 
@@ -87,7 +88,7 @@ The script writes a timestamped JSON receipt (`receipts/m2_math_receipt.json`) s
 |---|---|---|
 | **Claude Code** | `~/.claude/projects/<encoded-project-path>/<session-id>.jsonl` | **Yes!** Spawned subagents stream right next to it at `<session-id>/subagents/agent-<id>.jsonl` |
 | **Codex CLI** | `~/.codex/sessions/YYYY/MM/DD/rollout-<timestamp>-<id>.jsonl` | Yes (all tool calls, `apply_patch`, `update_plan`, shell traces) |
-| **Hermes Agent** | `~/.hermes/logs/sessions/<timestamp>.jsonl` *(plus `~/.hermes/state.db`)* | Yes (reasoning turns, tool calls, and results) |
+| **Hermes Agent** | `~/.hermes/{sessions,logs/sessions,profiles/*/sessions}/*.jsonl` *(plus private read-only `state.db` capture when JSONL is absent)* | Yes (reasoning turns, tool calls, and results across default & named profiles) |
 
 Your local watcher never intercepts API traffic and never touches your keys. It simply **tails those local JSONL files read-only** — and automatically filters out bare parallel tool acknowledgements (`"Created file."`, `"OK"`, `"Made 1 replacement..."`) so fast bursts of parallel edits don't cause false-positive loop alerts.
 

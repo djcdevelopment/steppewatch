@@ -2,6 +2,7 @@
 
 **Your laptop already has matrix silicon sitting at 0% while your cloud AI agents burn tokens. Put it to work for `$0.00`.**
 
+[![CI](https://github.com/djcdevelopment/steppewatch/actions/workflows/ci.yml/badge.svg)](https://github.com/djcdevelopment/steppewatch/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB)](requirements-m2.txt)
 [![Client Silicon: NPU · Apple M-Series](https://img.shields.io/badge/Client%20Silicon-NPU%20%7C%20Apple%20M--Series-111827)](PAPER.md)
@@ -201,6 +202,8 @@ If you use NVIDIA's Apache-2.0 open-source [**`NVIDIA/auto-ontology`**](https://
 | [`scripts/02_watch_frontier_agents.py`](scripts/02_watch_frontier_agents.py) | **Live Read-Only Watcher (`--json` supported)** — Tails Claude Code (+ subagents), Codex, and Hermes JSONL logs, filters bare tool-ack stubs, flags loops/stalls, and logs 5-field episodes. |
 | [`scripts/03_train_tiny_jepa.py`](scripts/03_train_tiny_jepa.py) | **Tiny Local JEPA Trainer** — Trains a compact `384-D` latent state + stall-risk MLP predictor on collected episodes (`--demo-synthetic` supported) and saves a `.npz` checkpoint. |
 | [`scripts/04_xray_my_sessions.py`](scripts/04_xray_my_sessions.py) | **Retrospective Session X-Ray (`--json` supported)** — Replays `W=5` sliding windows across your existing Claude/Codex/Hermes history to spot past stall loops, rank intent-drift surprises, and export real 5-field JEPA training data immediately. |
+| [`SECURITY.md`](SECURITY.md) | **Security & Privacy Posture** — Zero-network runtime, read-only transcript/SQLite guarantees, and private-log hygiene. |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | **Contributor Guide** — Offline test commands, synthetic-fixture rules, and field-testing credits. |
 | [`MANIFEST.sha256`](MANIFEST.sha256) | Cryptographic SHA-256 provenance manifest for all repository files. |
 
 ---

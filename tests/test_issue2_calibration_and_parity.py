@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
+import site
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -228,6 +231,72 @@ class Issue2CalibrationAndParityTest(unittest.TestCase):
         self.assertEqual(proxy_count, 5)
         self.assertAlmostEqual(float(targets[0]), 0.0)
         self.assertAlmostEqual(float(targets[1]), 0.95)
+
+    def test_batched_hermes_db_read_captures_database_only_once(self):
+        """Reading multiple sessions from one state.db must capture the DB once, not N times."""
+        db_path = self.root / "batch_state.db"
+        with closing(sqlite3.connect(db_path)) as conn:
+            conn.executescript(
+                """
+                CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL, ended_at REAL);
+                CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT,
+                    content TEXT, tool_calls TEXT, tool_name TEXT, active INTEGER DEFAULT 1);
+                INSERT INTO sessions VALUES ('s1', 100, NULL), ('s2', 200, NULL), ('s3', 300, NULL);
+                INSERT INTO messages(session_id, role, content) VALUES
+                    ('s1', 'assistant', 'Patched a.py'),
+                    ('s2', 'assistant', 'Patched b.py'),
+                    ('s3', 'assistant', 'Patched c.py');
+                """
+            )
+            conn.commit()
+        open_calls = 0
+        real_open = hermes_adapter.open_readonly
+
+        def counting_open(path):
+            nonlocal open_calls
+            open_calls += 1
+            return real_open(path)
+
+        targets = [
+            ("hermes", hermes_adapter.DatabaseSession(db_path, sid))
+            for sid in ("s1", "s2", "s3")
+        ]
+        with patch.object(hermes_adapter, "open_readonly", side_effect=counting_open):
+            preloaded = watcher.preload_database_sessions(targets, max_lines=50)
+        self.assertEqual(open_calls, 1, f"Expected 1 DB capture for 3 sessions, saw {open_calls}")
+        self.assertEqual(len(preloaded), 3)
+        self.assertEqual(preloaded[targets[1][1]][0][0]["content"], "Patched b.py")
+
+    def test_cli_edge_cases_missing_trace_missing_repo_and_empty_home(self):
+        """Public CLI entrypoints fail cleanly on bad inputs and succeed cleanly on empty homes."""
+        env = dict(os.environ, HOME=str(self.root))
+        env.setdefault("PYTHONUSERBASE", site.getuserbase())
+        env.pop("PYTHONPATH", None)
+
+        bad_trace = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "02_watch_frontier_agents.py"),
+             "--force-hash", "--once", "--trace", str(self.root / "does_not_exist.jsonl"),
+             "--episodes", str(self.root / "ep.jsonl")],
+            env=env, cwd=ROOT, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(bad_trace.returncode, 1)
+        self.assertFalse((self.root / "ep.jsonl").exists())
+
+        bad_repo = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "01_see_the_math_m2.py"),
+             "--force-hash", "--repo", str(self.root / "no_such_repo")],
+            env=env, cwd=ROOT, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(bad_repo.returncode, 1)
+
+        empty_xray = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "04_xray_my_sessions.py"),
+             "--force-hash", "--json", "--hermes-home", str(self.root / "missing_hermes")],
+            env=env, cwd=ROOT, capture_output=True, text=True, check=True,
+        )
+        data = json.loads(empty_xray.stdout)
+        self.assertEqual(data["sessions_scanned"], 0)
+        self.assertTrue(data["advisory_only"])
 
 
 if __name__ == "__main__":

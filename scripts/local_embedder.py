@@ -129,12 +129,19 @@ def probe_hardware() -> Dict[str, Any]:
 
 
 class LocalEmbedder:
-    """384-D text embedder with automatic SentenceTransformer -> hash fallback."""
+    """384-D text embedder with transparent SentenceTransformer -> hash fallback."""
 
-    def __init__(self, force_hash: bool = False, model_name: str = "all-MiniLM-L6-v2") -> None:
+    def __init__(
+        self,
+        force_hash: bool = False,
+        model_name: str = "all-MiniLM-L6-v2",
+        offline: bool = False,
+    ) -> None:
         self.dim = EMBED_DIM
         self.backend_name = "hash384_cpu"
+        self.fallback_reason: Optional[str] = None
         self._st_model: Any = None
+        local_only = offline or os.environ.get("HF_HUB_OFFLINE") == "1" or os.environ.get("TRANSFORMERS_OFFLINE") == "1"
         if not force_hash:
             try:
                 import torch  # type: ignore
@@ -145,10 +152,17 @@ class LocalEmbedder:
                     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available()
                     else "cpu"
                 )
-                self._st_model = SentenceTransformer(model_name, device=device)
+                kwargs: Dict[str, Any] = {"device": device}
+                if local_only:
+                    kwargs["local_files_only"] = True
+                self._st_model = SentenceTransformer(model_name, **kwargs)
                 self.backend_name = f"sentence_transformers:{model_name}:{device}"
-            except Exception:
+            except Exception as exc:
                 self._st_model = None
+                self.fallback_reason = (
+                    f"Neural embedder ({model_name}) unavailable ({type(exc).__name__}: {exc}); "
+                    "using zero-download hash384_cpu fallback."
+                )
 
     def encode(self, texts: Sequence[str]) -> np.ndarray:
         """Return L2-normalized float32 embeddings of shape [len(texts), 384]."""
