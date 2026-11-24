@@ -3,6 +3,7 @@ import importlib
 from contextlib import closing
 import json
 import os
+import site
 import sqlite3
 import subprocess
 import sys
@@ -165,6 +166,7 @@ class HermesAdapterTest(unittest.TestCase):
 
     def test_all_cli_entrypoints_custom_home(self):
         env = dict(os.environ, HOME=str(self.home))
+        env.setdefault("PYTHONUSERBASE", site.getuserbase())
         env.pop("PYTHONPATH", None)
         for script, flags in [
             ("04_xray_my_sessions.py", ["--max-sessions", "40", "--json"]),

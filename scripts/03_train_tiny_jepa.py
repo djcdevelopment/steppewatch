@@ -110,6 +110,45 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-np.clip(x, -20.0, 20.0)))
 
 
+def parse_human_label(raw: Any) -> float | None:
+    """Convert optional human_label (bool, float, or stall/ok string) into [0.0, 1.0]."""
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return 1.0 if raw else 0.0
+    if isinstance(raw, (int, float)):
+        return float(np.clip(float(raw), 0.0, 1.0))
+    if isinstance(raw, str):
+        val = raw.strip().lower()
+        if val in {"stall", "true", "tp", "yes", "1", "loop", "thrash"}:
+            return 1.0
+        if val in {"ok", "false", "fp", "no", "0", "healthy", "normal", "wait"}:
+            return 0.0
+        try:
+            return float(np.clip(float(val), 0.0, 1.0))
+        except ValueError:
+            return None
+    return None
+
+
+def resolve_risk_targets(episodes: List[Dict[str, Any]]) -> Tuple[np.ndarray, int, int]:
+    """Prefer human_label over heuristic detector scores and report exact label provenance."""
+    targets: List[float] = []
+    human_count = 0
+    proxy_count = 0
+    for ep in episodes:
+        assess = ep.get("assessment_vs_expectations", {})
+        hl = parse_human_label(assess.get("human_label"))
+        if hl is not None:
+            targets.append(hl)
+            human_count += 1
+        else:
+            proxy = float(assess.get("actual_risk_target", ep.get("end_state", {}).get("thrash_score", 0.0)))
+            targets.append(float(np.clip(proxy, 0.0, 1.0)))
+            proxy_count += 1
+    return np.array(targets, dtype=np.float32), human_count, proxy_count
+
+
 def train_tiny_jepa(
     X: np.ndarray,
     Y_state: np.ndarray,
@@ -118,13 +157,17 @@ def train_tiny_jepa(
     epochs: int = 200,
     lr: float = 0.20,
     seed: int = 42,
+    split_mode: str = "chronological",
 ) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
     """Train a 2-layer latent JEPA predictor (768 -> hidden -> 384 state + 1 risk)."""
     rng = np.random.default_rng(seed)
     n = X.shape[0]
-    perm = rng.permutation(n)
     split = max(1, int(0.8 * n))
-    tr_idx, va_idx = perm[:split], perm[split:] if split < n else perm[-1:]
+    if split_mode == "chronological":
+        order = np.arange(n)
+    else:
+        order = rng.permutation(n)
+    tr_idx, va_idx = order[:split], order[split:] if split < n else order[-1:]
 
     in_dim = X.shape[1]
     W1 = (rng.standard_normal((in_dim, hidden_dim)) * np.sqrt(2.0 / in_dim)).astype(np.float32)
@@ -219,6 +262,8 @@ def main() -> int:
     parser.add_argument("--episodes", type=Path, default=Path("episodes/transitions.jsonl"), help="Input episodes NDJSON")
     parser.add_argument("--out", type=Path, default=Path("checkpoints/my_m2_jepa.npz"), help="Output checkpoint .npz")
     parser.add_argument("--epochs", type=int, default=200, help="Training epochs")
+    parser.add_argument("--split", choices=("chronological", "random"), default="chronological", help="Validation split strategy (default: chronological holdout on real episodes)")
+    parser.add_argument("--skip-placeholder-intents", action="store_true", help="Exclude episodes whose intent fell back to a placeholder string")
     parser.add_argument("--demo-synthetic", action="store_true", help="Train on synthetic Day-1 demo episodes")
     parser.add_argument("--force-hash", action="store_true", help="Use zero-download hash384 embedder")
     args = parser.parse_args()
@@ -227,12 +272,22 @@ def main() -> int:
     if args.demo_synthetic:
         episodes = build_demo_synthetic_episodes(40)
         source_label = "synthetic_demo (40 episodes)"
+        split_mode = "random"
     else:
         if not args.episodes.exists():
             print(f"Episodes file not found: {args.episodes}. Run 02_watch_frontier_agents.py or pass --demo-synthetic.")
             return 1
         episodes = load_episodes(args.episodes)
+        if args.skip_placeholder_intents:
+            episodes = [
+                e for e in episodes
+                if not e.get("intended_outcome", {}).get("is_placeholder", False)
+                and not str(e.get("intended_outcome", {}).get("summary", "")).startswith("Supervise session ")
+            ]
+        if args.split == "chronological":
+            episodes.sort(key=lambda e: str(e.get("timestamp_utc", "")))
         source_label = f"{args.episodes} ({len(episodes)} episodes)"
+        split_mode = args.split
 
     if len(episodes) < 6:
         print(f"Need at least 6 episodes to train/validate cleanly (found {len(episodes)}). Pass --demo-synthetic to test now.")
@@ -241,9 +296,11 @@ def main() -> int:
     curr_texts = [str(e["current_state"].get("summary", "")) for e in episodes]
     intent_texts = [str(e["intended_outcome"].get("summary", "")) for e in episodes]
     end_texts = [str(e["end_state"].get("summary", "")) for e in episodes]
-    risk_targets = np.array(
-        [float(e.get("assessment_vs_expectations", {}).get("actual_risk_target", e.get("end_state", {}).get("thrash_score", 0.0))) for e in episodes],
-        dtype=np.float32,
+    risk_targets, human_count, proxy_count = resolve_risk_targets(episodes)
+    placeholder_count = sum(
+        1 for e in episodes
+        if e.get("intended_outcome", {}).get("is_placeholder", False)
+        or str(e.get("intended_outcome", {}).get("summary", "")).startswith("Supervise session ")
     )
 
     z_curr = embedder.encode(curr_texts)
@@ -251,12 +308,15 @@ def main() -> int:
     z_end = embedder.encode(end_texts)
     X = np.concatenate([z_curr, z_intent], axis=1)
 
-    weights, metrics = train_tiny_jepa(X, z_end, risk_targets, epochs=args.epochs)
+    weights, metrics = train_tiny_jepa(X, z_end, risk_targets, epochs=args.epochs, split_mode=split_mode)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(args.out, **weights)
 
     print(f"=== Tiny Local JEPA Training Summary ({source_label}) ===")
     print(f"Embedder       : {embedder.backend_name}")
+    print(f"Split / Labels : {split_mode} | human_labeled={human_count}, heuristic_proxy={proxy_count}, placeholder_intents={placeholder_count}")
+    if human_count == 0 and not args.demo_synthetic:
+        print("Note           : Risk targets are uncalibrated heuristic proxy scores until human_label values are populated.")
     print(f"Train / Val    : {metrics['train_count']} / {metrics['val_count']} episodes ({metrics['epochs']} epochs in {metrics['train_ms']} ms)")
     print(f"Val BEFORE     : state_surprise={metrics['val_before']['state_surprise']:.4f} | risk_mae={metrics['val_before']['risk_mae']:.4f}")
     print(f"Val AFTER      : state_surprise={metrics['val_after']['state_surprise']:.4f} | risk_mae={metrics['val_after']['risk_mae']:.4f}")

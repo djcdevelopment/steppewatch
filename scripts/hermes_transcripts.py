@@ -10,6 +10,7 @@ import sqlite3
 import warnings
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
@@ -40,6 +41,26 @@ def _stamp(path: Path) -> tuple:
         return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
     except FileNotFoundError:
         return ()
+
+
+def _coerce_timestamp(value: Any, fallback: float) -> float:
+    """Coerce SQLite numeric, ISO-8601 string, or NULL timestamps into sortable epoch floats."""
+    if value is None:
+        return fallback
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return fallback
+        try:
+            return float(raw)
+        except ValueError:
+            try:
+                return datetime.fromisoformat(raw.replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                return fallback
+    return fallback
 
 
 def _copy_database_file(source: Path, destination: Path) -> None:
@@ -100,6 +121,7 @@ def discover_hermes(home: Path, max_files: int) -> List[tuple]:
         if not database.is_file():
             continue
         try:
+            db_mtime = database.stat().st_mtime
             with open_readonly(database) as conn:
                 # Limit per profile before parsing message bodies. EXISTS avoids empty sessions.
                 columns = {r[1] for r in conn.execute("PRAGMA table_info(sessions)")}
@@ -113,7 +135,7 @@ def discover_hermes(home: Path, max_files: int) -> List[tuple]:
                 count = 0
                 for session_id, timestamp in rows:
                     if session_id not in seen:
-                        found.append((timestamp, source, DatabaseSession(database, session_id)))
+                        found.append((_coerce_timestamp(timestamp, db_mtime), source, DatabaseSession(database, session_id)))
                         count += 1
                         if count >= max_files:
                             break

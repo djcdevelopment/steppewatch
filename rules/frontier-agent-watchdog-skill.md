@@ -48,4 +48,4 @@ DELTA_NOTES: <any unexpected failure, scope change, or trap worth remembering fo
 When launching subagents:
 - Give each subagent disjoint `TARGETS` so parallel workers do not collide on the same files.
 - Require every subagent to follow Rules 1–4 above.
-- If a local watchdog flags a subagent with `thrash_detected = true` or prolonged silence with zero new targets, stop and inspect its last 5 steps before letting it continue burning tokens.
+- If a local watchdog raises an advisory flag (`thrash_detected = true` -> `advisory_inspect_error_loop` or `advisory_inspect_loop`), inspect the subagent's last 5 steps before intervening; never auto-terminate an agent from a heuristic score alone.

@@ -32,7 +32,7 @@ Pull the latest https://github.com/djcdevelopment/steppewatch.git (v1.5+) and ru
 
 Prefer running every step in your own terminal? Follow these four stages and answer the discovery question at each checkpoint:
 
-### Discovery 1 — X-Ray Your Own Recent Agent History (`< 5 s`)
+### Discovery 1 — X-Ray Your Own Recent Agent History (Fast Hash Baseline)
 ```bash
 git pull
 python3 scripts/04_xray_my_sessions.py \
@@ -40,23 +40,24 @@ python3 scripts/04_xray_my_sessions.py \
   --max-sessions 25 \
   --export-episodes episodes/my_history.jsonl
 ```
-**Ask yourself:** Open the `#1` flagged transcript and look at the last 10 turns.
-- Did the agent actually enter a polite loop or drift away from your initial prompt, or did a terse framework output cause a false positive?
-- How many extra cloud turns happened *after* the local watchdog would have flagged it?
+**Ask yourself:** Open the `#1` advisory-flagged transcript and look at the flag neighborhood (`flag@N` preview) and later outcomes.
+- Did the agent actually enter a repeated-failure or no-progress stall, or was it productive inspection, sequential reading, or an intentional wait? (Keep flags **advisory**, not automatic termination.)
+- Note: `post_flag_est_tokens` is a rough character-derived step-summary count (`chars / 4`) including unverified flags — **not** API billing or proven token savings.
 
-### Discovery 2 — Train Your First Personal Tiny JEPA on Real History (`< 1 s`)
+### Discovery 2 — Train Your First Personal Tiny JEPA on Real History (`< 1 s` NumPy Train)
 ```bash
 python3 scripts/03_train_tiny_jepa.py \
   --force-hash \
   --episodes episodes/my_history.jsonl \
   --out checkpoints/my_real_jepa.npz
 ```
-**Ask yourself:** Open [`scripts/03_train_tiny_jepa.py`](scripts/03_train_tiny_jepa.py) (~120 lines of plain NumPy — zero magic black boxes).
-- How much did validation `state_surprise` (`1 - cos(ŝ_next, s_next)`) and `risk_mae` drop from before training to after training?
-- Look at your highest-surprise episodes in `episodes/my_history.jsonl`: was your opening prompt vague, or was there an undocumented repo rule that belongs as a 1-line guard in `CLAUDE.md` / `AGENTS.md`?
+**Ask yourself:** Open [`scripts/03_train_tiny_jepa.py`](scripts/03_train_tiny_jepa.py) (plain NumPy — zero magic black boxes).
+- How much did chronological validation `state_surprise` (`1 - cos(ŝ_next, s_next)`) and `risk_mae` change from before to after training?
+- Remember that until you populate `human_label` (`"stall"` / `"ok"`) in `episodes/my_history.jsonl`, risk targets come from the heuristic detector proxy rather than adjudicated ground truth.
+- Look at your highest-surprise episodes in `episodes/my_history.jsonl`: did requirements change mid-session, or was there an undocumented repo rule that belongs as a 1-line guard in `CLAUDE.md` / `AGENTS.md`?
 
 ### Discovery 3 — Upgrade From Lexical Hashing to Real Semantic Embeddings (A/B Test)
-Once you've seen the zero-download `--force-hash` baseline, install `sentence-transformers` (downloads `all-MiniLM-L6-v2` ~90 MB once, caches locally, and automatically runs on PyTorch MPS Metal on Apple Silicon!):
+Once you've seen the zero-download `--force-hash` baseline, install `sentence-transformers` (downloads `all-MiniLM-L6-v2` ~90 MB once, caches locally, and automatically runs on PyTorch MPS Metal on Apple Silicon; X-Ray encodes each session in a single batched pass, though total wall time scales with session count and hardware):
 
 ```bash
 pip install -r requirements-m2.txt

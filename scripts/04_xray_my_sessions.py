@@ -28,7 +28,19 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from local_embedder import LocalEmbedder, detect_agent_thrash  # noqa: E402
+from local_embedder import (  # noqa: E402
+    LocalEmbedder,
+    normalize_step,
+    score_pre_embedded_window,
+)
+
+
+def _build_segments(num_steps: int, segment_breaks: List[int]) -> List[Tuple[int, int]]:
+    """Convert segment boundary indices into contiguous [start, end) slices."""
+    if num_steps <= 0:
+        return []
+    cuts = sorted({0, num_steps, *(b for b in segment_breaks if 0 < b < num_steps)})
+    return [(cuts[i], cuts[i + 1]) for i in range(len(cuts) - 1) if cuts[i + 1] > cuts[i]]
 
 
 def replay_session_windows(
@@ -36,34 +48,68 @@ def replay_session_windows(
     steps: List[str],
     trace_id: str,
     stride: int = 2,
+    segment_breaks: List[int] | None = None,
+    intent_text: str = "",
 ) -> Dict[str, Any]:
-    """Replay W=5 sliding windows across a session to find peak thrash & first catch."""
-    if len(steps) < 4:
-        res = detect_agent_thrash(embedder, steps, trace_id=trace_id)
-        return {
-            "max_thrash_score": float(res["thrash_score"]),
-            "flagged": bool(res["thrash_detected"]),
-            "first_flag_step": len(steps) if res["thrash_detected"] else None,
-            "post_flag_steps": 0,
-            "post_flag_est_tokens": 0,
-            "windows_checked": 1,
-        }
-
-    # Cap total steps scanned per giant session so X-Ray stays fast (<5 s total)
+    """Single-pass batched W=5 replay respecting user-request segment boundaries."""
     capped = steps[-120:]
+    offset = len(steps) - len(capped)
+    norm_steps = [normalize_step(s) for s in capped]
+    end_summary = " | ".join(capped[-2:])[:300] if capped else intent_text[:300]
+    drift_intent = (intent_text or "")[:400]
+
+    # Single batched encode for all steps + intent + end_summary (eliminates ~50x per-window calls).
+    batch_texts = list(norm_steps)
+    intent_idx = len(batch_texts)
+    batch_texts.append(drift_intent)
+    end_idx = len(batch_texts)
+    batch_texts.append(end_summary)
+    all_embs = embedder.encode(batch_texts)
+
+    drift_delta = round(
+        float(1.0 - np.clip(float(np.dot(all_embs[intent_idx], all_embs[end_idx])), -1.0, 1.0)),
+        4,
+    )
+
+    adj_breaks = [b - offset for b in (segment_breaks or []) if offset < b < len(steps)]
+    segments = _build_segments(len(norm_steps), adj_breaks)
+
     max_score = 0.0
     first_flag_idx = None
+    flagged_preview = None
+    flagged_action = "continue"
+    wait_chatter_seen = False
     windows_checked = 0
 
-    for end_idx in range(4, len(capped) + 1, max(1, stride)):
-        win = capped[max(0, end_idx - 5) : end_idx]
-        res = detect_agent_thrash(embedder, win, trace_id=trace_id)
-        windows_checked += 1
-        sc = float(res["thrash_score"])
-        if sc > max_score:
-            max_score = sc
-        if res["thrash_detected"] and first_flag_idx is None:
-            first_flag_idx = end_idx
+    for seg_start, seg_end in segments:
+        seg_len = seg_end - seg_start
+        if seg_len < 3:
+            continue
+        if seg_len == 3:
+            win_ends = [seg_end]
+        else:
+            win_ends = list(range(seg_start + 4, seg_end + 1, max(1, stride)))
+            if win_ends[-1] != seg_end:
+                win_ends.append(seg_end)
+
+        for end_idx_w in win_ends:
+            start_idx_w = max(seg_start, end_idx_w - 5)
+            res = score_pre_embedded_window(
+                norm_steps[start_idx_w:end_idx_w],
+                all_embs[start_idx_w:end_idx_w],
+                embedder.backend_name,
+                trace_id=trace_id,
+            )
+            windows_checked += 1
+            if res.get("wait_chatter_detected"):
+                wait_chatter_seen = True
+            sc = float(res["thrash_score"])
+            if sc > max_score:
+                max_score = sc
+            if res["thrash_detected"] and first_flag_idx is None:
+                first_flag_idx = end_idx_w
+                flagged_preview = capped[end_idx_w - 1][:110]
+                flagged_action = str(res["action"])
 
     post_steps = 0
     post_est_tokens = 0
@@ -75,10 +121,15 @@ def replay_session_windows(
     return {
         "max_thrash_score": round(max_score, 4),
         "flagged": first_flag_idx is not None,
+        "flagged_action": flagged_action,
+        "flagged_step_preview": flagged_preview,
         "first_flag_step": first_flag_idx,
         "post_flag_steps": post_steps,
         "post_flag_est_tokens": post_est_tokens,
         "windows_checked": windows_checked,
+        "intent_drift_delta": drift_delta,
+        "wait_chatter_detected": wait_chatter_seen,
+        "advisory_only": True,
     }
 
 
@@ -103,6 +154,8 @@ def main() -> int:
     total_post_steps = 0
     total_post_tokens = 0
     total_acks_filtered = 0
+    total_wrappers_skipped = 0
+    placeholder_intents_count = 0
 
     for source, path in targets:
         parsed = watcher.parse_jsonl_transcript(path, max_lines=600)
@@ -110,17 +163,26 @@ def main() -> int:
         if len(steps) < 3:
             continue
 
-        replay = replay_session_windows(embedder, steps, trace_id=path.stem)
+        # Measure drift against the active request intent when multi-request turns exist.
+        active_intent = parsed.get("latest_intent") or parsed["intent"]
+        replay = replay_session_windows(
+            embedder,
+            steps,
+            trace_id=path.stem,
+            segment_breaks=parsed.get("segment_breaks"),
+            intent_text=active_intent,
+        )
         total_acks_filtered += int(parsed.get("filtered_acks", 0))
+        total_wrappers_skipped += int(parsed.get("compaction_wrappers_skipped", 0))
+        if parsed.get("intent_is_placeholder"):
+            placeholder_intents_count += 1
         total_post_steps += replay["post_flag_steps"]
         total_post_tokens += replay["post_flag_est_tokens"]
 
-        # Compute intent-to-end-state drift (surprise delta)
         curr_txt = steps[0][:300]
-        intent_txt = parsed["intent"][:400]
+        intent_txt = active_intent[:400]
         end_txt = " | ".join(steps[-2:])[:300]
-        embs = embedder.encode([curr_txt, intent_txt, end_txt])
-        drift_delta = round(float(1.0 - np.clip(float(np.dot(embs[1], embs[2])), -1.0, 1.0)), 4)
+        drift_delta = replay["intent_drift_delta"]
 
         row = {
             "source": source,
@@ -128,12 +190,18 @@ def main() -> int:
             "steps": len(steps),
             "acks_filtered": int(parsed.get("filtered_acks", 0)),
             "flagged": replay["flagged"],
+            "advisory_only": True,
+            "flagged_action": replay["flagged_action"],
+            "wait_chatter_detected": replay["wait_chatter_detected"],
             "max_thrash_score": replay["max_thrash_score"],
             "first_flag_step": replay["first_flag_step"],
             "post_flag_steps": replay["post_flag_steps"],
             "post_flag_est_tokens": replay["post_flag_est_tokens"],
             "intent_drift_delta": drift_delta,
+            "intent_is_placeholder": bool(parsed.get("intent_is_placeholder", False)),
             "touched_files_count": len(parsed["touched_files"]),
+            "intent_preview": intent_txt[:110],
+            "flagged_step_preview": replay["flagged_step_preview"],
         }
         rows.append(row)
 
@@ -146,19 +214,24 @@ def main() -> int:
                     "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     "source_agent": source,
                     "current_state": {"summary": curr_txt, "step_count_observed": len(steps)},
-                    "intended_outcome": {"summary": intent_txt},
+                    "intended_outcome": {
+                        "summary": intent_txt,
+                        "is_placeholder": bool(parsed.get("intent_is_placeholder", False)),
+                    },
                     "local_prediction": {"source": "zero_shot_intent_prior", "predicted_stall_risk": 0.2},
                     "end_state": {
                         "summary": end_txt,
                         "touched_files": parsed["touched_files"][:12],
                         "thrash_detected": replay["flagged"],
                         "thrash_score": replay["max_thrash_score"],
-                        "action": "early_abort_and_reroute" if replay["flagged"] else "continue",
+                        "action": replay["flagged_action"],
+                        "advisory_only": True,
                     },
                     "assessment_vs_expectations": {
                         "state_surprise_delta": drift_delta,
                         "risk_prediction_error": round(abs(actual_risk - 0.2), 4),
                         "actual_risk_target": round(actual_risk, 4),
+                        "target_source": "heuristic_detector_proxy",
                         "human_label": None,
                     },
                 }
@@ -177,13 +250,17 @@ def main() -> int:
     report = {
         "schema": "steppewatch-session-xray.v1",
         "embedder": embedder.backend_name,
+        "advisory_only": True,
         "elapsed_ms": elapsed_ms,
         "sessions_scanned": len(rows),
         "sessions_by_source": {source: sum(r["source"] == source for r in rows) for source in sorted({r["source"] for r in rows})},
         "sessions_flagged": len(flagged_rows),
         "bare_tool_acks_filtered": total_acks_filtered,
+        "compaction_wrappers_skipped": total_wrappers_skipped,
+        "placeholder_intents_count": placeholder_intents_count,
         "estimated_post_stall_steps": total_post_steps,
         "estimated_post_stall_tokens": total_post_tokens,
+        "post_flag_est_tokens_note": "Character-derived step-summary count (chars/4) including advisory/unverified flags; not API billing or proven savings.",
         "exported_episodes_count": len(exported),
         "exported_episodes_path": str(args.export_episodes) if args.export_episodes else None,
         "top_sessions": rows_sorted[:10],
@@ -195,18 +272,22 @@ def main() -> int:
 
     print(f"=== Steppewatch Session X-Ray ({len(rows)} real local transcripts in {elapsed_ms} ms, $0.00 API cost) ===")
     print(f"Embedder                  : {embedder.backend_name}")
-    print(f"Flagged stall/loop runs   : {len(flagged_rows)} / {len(rows)}")
-    print(f"Bare tool-acks filtered   : {total_acks_filtered}")
-    print(f"Post-flag steps observed  : {total_post_steps} (~{total_post_tokens} est. step-summary tokens)")
+    print(f"Advisory loop flags       : {len(flagged_rows)} / {len(rows)} (advisory only — inspect before intervening)")
+    print(f"Bare tool-acks filtered   : {total_acks_filtered} | compaction wrappers skipped: {total_wrappers_skipped}")
+    print(f"Post-flag steps observed  : {total_post_steps} (~{total_post_tokens} char/4 step-summary units; not billing/savings)")
     if rows_sorted:
-        print("\nTop sessions by thrash / intent-drift surprise:")
+        print("\nTop sessions by advisory loop score / intent-drift surprise:")
         for r in rows_sorted[:8]:
-            tag = "FLAGGED" if r["flagged"] else "OK     "
+            tag = "ADVISORY" if r["flagged"] else "OK      "
             print(
                 f"  [{tag}] ({r['source']:15s}) {r['session'][:34]:34s} "
                 f"| steps={r['steps']:3d} max_thrash={r['max_thrash_score']:.3f} "
                 f"drift={r['intent_drift_delta']:.3f} post_steps={r['post_flag_steps']}"
             )
+            if r["flagged"]:
+                print(f"            intent : {r['intent_preview']}")
+                if r.get("flagged_step_preview"):
+                    print(f"            flag@{r['first_flag_step']}: {r['flagged_step_preview']}")
     if args.export_episodes is not None:
         print(f"\nExported {len(exported)} real 5-field JEPA episodes -> {args.export_episodes}")
         if len(exported) >= 6:

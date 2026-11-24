@@ -67,12 +67,12 @@ python3 scripts/02_watch_frontier_agents.py \
   --episodes episodes/transitions.jsonl
 ```
 
-#### Decision Contract on JSON Output
+#### Decision Contract on JSON Output (Advisory-First)
 
-Inspect each record in `results`:
-- If `thrash_detected == true` (`thrash_score >= 0.65`) -> **Pause/nudge or re-slice that subagent immediately.** Do not let it continue burning frontier tokens in a silent loop.
+Inspect each record in `results` — **treat flags as advisory inspection triggers, not automatic kill switches**:
+- If `thrash_detected == true` (`thrash_score >= 0.65`) -> **Inspect the subagent's last 5 steps and active diff before intervening.** `action == "advisory_inspect_error_loop"` signals repeated failing commands/errors; `action == "advisory_inspect_loop"` signals semantic repetition that can also occur during legitimate inspection or orchestration. Only pause/re-slice after confirming a real stall.
 - If `state_surprise_delta >= 0.60` -> **Inspect its diff/claims first** before trusting its summary.
-- When `episodes/transitions.jsonl` reaches `>= 20` episodes, retrain the personal local JEPA checkpoint in `< 1 s`:
+- When `episodes/transitions.jsonl` reaches `>= 20` episodes (ideally with `human_label` values filled in), retrain the personal local JEPA checkpoint in `< 1 s`:
   ```bash
   python3 scripts/03_train_tiny_jepa.py --episodes episodes/transitions.jsonl --out checkpoints/local_jepa.npz
   ```

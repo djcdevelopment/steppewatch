@@ -115,10 +115,20 @@ require no additional dependencies or network access.
 
 ## How to Read Your Own Numbers (No ML PhD Required)
 
-When `01_see_the_math_m2.py` finishes on your machine, you'll see three concrete proofs:
-- **Part A (`262,144` columns = `96.5 MiB`):** A single matrix holding hundreds of repos worth of symbols, rules, and history takes less than `0.4%` of a 24 GB Mac's memory and scores `16` queries at once in milliseconds — faster than a single round-trip to a cloud API.
-- **Part B (`thrash_score` `0.0000` vs. `0.85+`):** Even when a healthy agent hits a bug mid-run, it touches new symbols and applies real fixes (`score = 0.0`, `continue`). A polite agent that re-reads the same plan 5 times with zero new code targets lights up immediately (`early_abort_and_reroute`) — with `$0` spent on a second LLM.
-- **Part C (Claim Grounding):** The script picks a real function from your own repo, fakes an agent claim saying *"this repo is missing `<symbol>`"*, and shows your local silicon finding the exact `file:line` proving the claim false in milliseconds.
+When `01_see_the_math_m2.py` finishes on your machine, you'll see three concrete local checks:
+- **Part A (`262,144`-column random-matrix microbenchmark):** Measures raw batched MatMul throughput on your CPU/Metal/NPU (`96.5 MiB` `INT8+FP16 scales` reference footprint; `192 MiB` `FP16` timed on Apple MLX/MPS). This is synthetic matrix math, not end-to-end retrieval latency.
+- **Part B (2-trace synthetic loop smoke check):** Sanity-checks healthy debugging (`0.0000`) vs. a polite paraphrased stall (`0.85+`) at `$0` cloud cost. Real-session flags are **advisory only** (`advisory_inspect_error_loop` / `advisory_inspect_loop`) and should never automatically terminate an agent.
+- **Part C (Hybrid candidate grounding):** Indexes symbols from your repo and uses **hybrid exact-symbol lexical + dense retrieval** (plus optional `--rerank` bounded cross-encoder relevance scoring) to surface candidate `file:line` references for human or agent inspection. Relevance scores surface evidence to check — they do not formally prove entailment or falsity.
+
+---
+
+## Real-World Field Testing & Calibration Credit (Apple M2 Option B — Issue #2 & PR #1)
+
+Independent real-session testing by **David Murray (`@thedavidmurray`)** on an Apple M2 (`Mac14,7`, 24 GiB RAM) surfaced four high-value engineering findings that directly shaped `v1.11`:
+1. **Hermes default/named-profile & `state.db` coverage ([PR #1](https://github.com/djcdevelopment/steppewatch/pull/1)):** Added read-only multi-profile discovery (`~/.hermes/sessions`, `logs/sessions`, `profiles/*/sessions`, and private APFS-cloned `state.db`+WAL captures).
+2. **Real-session false-positive audit ([Issue #2](https://github.com/djcdevelopment/steppewatch/issues/2)):** Manual review of the top-5 Option B MiniLM X-Ray flags found **1/5 true stall** (repeated CLI update/lock failure) and **4/5 false positives** (multi-request QA, similar successful orchestration across distinct tasks, sequential chunk reads, and requested deadline waits). In response, `v1.11` makes all flags strictly **advisory**, segments sliding windows on user-request & compaction boundaries, broadens target/pagination/task-ID progress tracking, distinguishes scheduled wait chatter, and adds regression tests for all five cases.
+3. **Hybrid retrieval beats pure MiniLM on exact symbols:** On a second real repository, exact lexical hashing hit Rank `#1` while MiniLM alone fell to Rank `#6` (recovered to `#1` via bounded `cross-encoder/ms-marco-MiniLM-L-6-v2` reranking). `01_see_the_math_m2.py` now fuses exact-symbol lexical scoring with dense vectors by default and exposes opt-in `--rerank`.
+4. **Batched X-Ray & honest episode metadata:** Per-window MiniLM encoding took `70.8 s` across 40 real sessions on M2; Python `04_xray_my_sessions.py` now uses single-pass batched encoding (matching `.NET v1.10`), tail-safe JSONL parsing with opening-intent recovery, compaction-wrapper filtering, chronological JEPA validation splits, and explicit `human_label` preference over heuristic proxy risk targets.
 
 ---
 

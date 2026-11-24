@@ -26,7 +26,11 @@ STEP_PREFIX_RE = re.compile(
     r"^\s*(?:step|turn|attempt|iter(?:ation)?)\s*\d+\s*[:.\-]\s*", re.I
 )
 ERROR_SIGNATURE_RE = re.compile(
-    r"\b(error|exception|traceback|failed|refused|timeout|timed out|"
+    r"\b(error|exception|traceback|failed|failure|refused|timed\s+out|"
+    r"timeout\s+(?:error|exceeded|expired|waiting)|(?:read|connect|request|command|lock)\s+timeout|"
+    r"timeouterror|etimedout|deadline\s+exceeded|"
+    r"lock(?:ed)?\s+(?:error|failed|timeout|contention|held|busy)|database\s+is\s+locked|"
+    r"permission\s+denied|cannot\s+acquire\s+lock|exit\s+code\s+[1-9]|"
     r"syntaxerror|keyerror|valueerror|typeerror|assertionerror|runtimeerror|"
     r"connectionrefusederror|rc=[1-9]|http\s+[45]\d\d)\b",
     re.I,
@@ -37,6 +41,25 @@ SPECIFIC_EXCEPTION_RE = re.compile(
 CONCRETE_FIX_ACTION_RE = re.compile(
     r"\b(applied\s+fix|fixed|fix\s+the|updated|edited|added\s+[A-Za-z_]|"
     r"patched|implemented|created|wrote|resolved|refactored|ran\s+(?:pytest|dotnet|npm|cargo))\b",
+    re.I,
+)
+CONCRETE_DELIVERABLE_RE = re.compile(
+    r"\b(produced|generated|summarized|reported|dispatched|delegated|routed|"
+    r"completed|answered|published|exported|recorded|saved\s+(?:note|report|summary)|"
+    r"wrote\s+(?:note|report|summary)|new\s+note)\b",
+    re.I,
+)
+HESITATION_DEFER_RE = re.compile(
+    r"\b(re-?examin\w*|reconsider\w*|revisit\w*|double-?check\w*|carefully\s+review\w*|"
+    r"before\s+(?:making|writing|proposing|deciding|touching)|one\s+more\s+time|"
+    r"again\s+to\s+(?:confirm|verify|make\s+sure|check))\b",
+    re.I,
+)
+SCHEDULED_WAIT_RE = re.compile(
+    r"\b(waiting\s+(?:for|until|on)\s+(?:the\s+)?(?:deadline|timer|schedule|scheduled|cron|window|poll|check|finish|completion|\d+\s*(?:s|sec|seconds|m|min|minutes))|"
+    r"standing\s+by|still\s+waiting\s+for|will\s+check\s+(?:again|back)\s+(?:at|in|after)|"
+    r"scheduled\s+(?:deadline|wait|finish|check|window)|awaiting\s+(?:deadline|timer|scheduled)|"
+    r"sleep\s+\d+)\b",
     re.I,
 )
 RESOLUTION_SUCCESS_RE = re.compile(
@@ -176,15 +199,23 @@ class LocalEmbedder:
         return out
 
 
+def normalize_step(step: str) -> str:
+    """Normalize a trace step before embedding or window scoring."""
+    trimmed = (step or "").strip()[:600]
+    stripped = STEP_PREFIX_RE.sub("", trimmed).strip()
+    return stripped or trimmed
+
+
 def extract_true_code_targets(step_text: str) -> Set[str]:
-    """Extract concrete code targets while ignoring English sentence-starter prose."""
+    """Extract concrete code, document, pagination, and orchestration targets."""
     cleaned = STEP_PREFIX_RE.sub("", step_text)
     targets: Set[str] = set()
 
-    # 1. File names (code, config, docs)
+    # 1. File names (code, config, docs, notes, transcripts, databases)
     for fn in re.findall(
-        r"\b([A-Za-z0-9_.\-]+\.(?:py|cs|ts|tsx|js|jsx|go|rs|java|cpp|h|json|yaml|yml|toml|md|sh))\b",
+        r"\b([A-Za-z0-9_.\-]+\.(?:py|cs|ts|tsx|js|jsx|go|rs|java|cpp|h|json|jsonl|yaml|yml|toml|md|sh|ps1|txt|log|csv|sql|db|xml|html|css|cfg|ini|rst))\b",
         cleaned,
+        flags=re.I,
     ):
         targets.add(fn.lower())
 
@@ -204,48 +235,62 @@ def extract_true_code_targets(step_text: str) -> Set[str]:
         if cc.lower() not in ENGLISH_SENTENCE_GERUNDS:
             targets.add(cc.lower())
 
-    # 5. Line numbers, compiler diagnostics, HTTP codes, exit codes
+    # 5. Line numbers, pagination/chunk spans, compiler diagnostics, HTTP/exit codes
     for loc in re.findall(
-        r"\b(?:line\s+\d+|http\s+\d{3}|cs\d{4}|ts\d{4}|f\d{3}|rc=\d+)\b",
+        r"\b(?:line\s+\d+|lines?\s+\d+\s*[-–:]\s*\d+|L\d+(?:-L?\d+)?|"
+        r"(?:offset|start_?line|end_?line|chunk|page|part|section)\s*[:=#]?\s*\d+|"
+        r"http\s+\d{3}|cs\d{4}|ts\d{4}|f\d{3}|rc=\d+)\b",
         cleaned,
         flags=re.I,
     ):
         targets.add(re.sub(r"\s+", "_", loc.lower()))
 
+    # 6. Distinct task, ticket, PR/issue, agent, profile, or session identifiers
+    for ident in re.findall(
+        r"(?:#\d+\b|\b[A-Z]{2,8}-\d+\b|"
+        r"\b(?:task|job|agent|worker|profile|session|issue|pr|run)\s*[:=#/\-]\s*[A-Za-z0-9_.\-]+\b|"
+        r"https?://[^\s)\]>,'\"]+)",
+        cleaned,
+        flags=re.I,
+    ):
+        targets.add(re.sub(r"\s+", "_", ident.lower()))
+
     return targets
 
 
-def detect_agent_thrash(
-    embedder: LocalEmbedder,
-    steps: Sequence[str],
+def score_pre_embedded_window(
+    norm_window: Sequence[str],
+    embs: np.ndarray,
+    backend_name: str,
     trace_id: str = "trace-0",
     thrash_threshold: float = DEFAULT_THRASH_THRESHOLD,
+    start_time: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Evaluate the last 3-6 agent trace steps for semantic loops or polite stalls."""
-    t0 = time.perf_counter()
-    raw_window = [s.strip()[:600] for s in steps[-6:] if s and s.strip()]
-    if len(raw_window) < 3:
+    """Score a pre-embedded 3-6 step window for advisory loop/stall inspection."""
+    t0 = start_time if start_time is not None else time.perf_counter()
+    n = len(norm_window)
+    if n < 3 or len(embs) != n:
         return {
             "trace_id": trace_id,
             "thrash_detected": False,
             "thrash_score": 0.0,
             "thrash_threshold": thrash_threshold,
             "action": "continue",
+            "advisory_only": True,
+            "wait_chatter_detected": False,
             "reason": "fewer_than_3_steps",
             "latency_ms": round((time.perf_counter() - t0) * 1000.0, 2),
-            "backend": embedder.backend_name,
+            "backend": backend_name,
         }
 
-    norm_window = [STEP_PREFIX_RE.sub("", s).strip() or s for s in raw_window]
-    embs = embedder.encode(norm_window)
     sim_mat = embs @ embs.T
 
-    adj_cos = [float(sim_mat[i, i + 1]) for i in range(len(norm_window) - 1)]
-    osc_cos = [float(sim_mat[i, i + 2]) for i in range(len(norm_window) - 2)]
+    adj_cos = [float(sim_mat[i, i + 1]) for i in range(n - 1)]
+    osc_cos = [float(sim_mat[i, i + 2]) for i in range(n - 2)]
     upper_pairs = [
         float(sim_mat[i, j])
-        for i in range(len(norm_window))
-        for j in range(i + 1, len(norm_window))
+        for i in range(n)
+        for j in range(i + 1, n)
     ]
 
     mean_adj_cos = float(np.mean(adj_cos))
@@ -254,7 +299,7 @@ def detect_agent_thrash(
     effective_loop_cos = max(mean_adj_cos, 0.94 * max_osc_cos, all_pairs_cos)
 
     err_hits = [1 if ERROR_SIGNATURE_RE.search(s) else 0 for s in norm_window]
-    raw_error_ratio = sum(err_hits) / float(len(norm_window))
+    raw_error_ratio = sum(err_hits) / float(n)
     step_err_sigs = [
         frozenset(m.lower() for m in SPECIFIC_EXCEPTION_RE.findall(s)) for s in norm_window
     ]
@@ -270,30 +315,47 @@ def detect_agent_thrash(
 
     tail_new_targets = sum(new_target_counts[1:])
     zero_new_target_tail_steps = sum(1 for c in new_target_counts[1:] if c == 0)
-    stagnation_ratio = zero_new_target_tail_steps / float(max(1, len(norm_window) - 1))
+    stagnation_ratio = zero_new_target_tail_steps / float(max(1, n - 1))
 
     fix_steps = sum(1 for s in norm_window[1:] if CONCRETE_FIX_ACTION_RE.search(s))
+    deliverable_steps = sum(1 for s in norm_window[1:] if CONCRETE_DELIVERABLE_RE.search(s))
+    hesitation_steps = sum(1 for s in norm_window if HESITATION_DEFER_RE.search(s))
+    wait_steps = sum(1 for s in norm_window if SCHEDULED_WAIT_RE.search(s))
+
     final_step_resolved = bool(RESOLUTION_SUCCESS_RE.search(norm_window[-1])) and not bool(
-        re.search(r"\b(failed|error=[1-9]|rc=[1-9]|unresolved)\b", norm_window[-1], re.I)
+        re.search(r"\b(failed|error=[1-9]|rc=[1-9]|unresolved|locked)\b", norm_window[-1], re.I)
     )
+    scheduled_wait_dominant = (wait_steps >= max(2, n // 2)) and (raw_error_ratio == 0.0)
 
     productive_debug = (
         (distinct_err_sigs >= 3 and fix_steps >= 2)
         or (final_step_resolved and fix_steps >= 1 and tail_new_targets >= 2)
     )
+    productive_non_edit = (
+        raw_error_ratio == 0.0
+        and hesitation_steps == 0
+        and (
+            (deliverable_steps >= 2 and tail_new_targets >= 2)
+            or (tail_new_targets >= n and stagnation_ratio <= 0.34)
+            or (final_step_resolved and deliverable_steps >= 1 and tail_new_targets >= 1)
+        )
+    )
 
     if productive_debug:
         effective_error_ratio = 0.0
         progress_score = min(1.0, (tail_new_targets + 2 * fix_steps) / 6.0)
+    elif productive_non_edit:
+        effective_error_ratio = 0.0
+        progress_score = min(1.0, (tail_new_targets + 1.5 * deliverable_steps) / max(3.0, float(n * 1.25)))
     else:
         effective_error_ratio = raw_error_ratio
-        progress_score = min(1.0, tail_new_targets / max(3.0, float(len(norm_window) * 1.5)))
+        progress_score = min(1.0, tail_new_targets / max(3.0, float(n * 1.5)))
 
     # Hash fallback has slightly lower baseline cosine than MiniLM on paraphrases;
     # keep MiniLM thresholds canonical while adapting gracefully if hash fallback is used.
-    cos_floor = 0.36 if embedder.backend_name == "hash384_cpu" else 0.56
+    cos_floor = 0.36 if backend_name == "hash384_cpu" else 0.56
     cos_span = 0.28
-    silent_floor = 0.38 if embedder.backend_name == "hash384_cpu" else 0.58
+    silent_floor = 0.38 if backend_name == "hash384_cpu" else 0.58
 
     cos_component = max(0.0, min(1.0, (effective_loop_cos - cos_floor) / cos_span))
     silent_loop_boost = 0.0
@@ -302,39 +364,81 @@ def detect_agent_thrash(
         and stagnation_ratio >= 0.66
         and fix_steps == 0
         and not final_step_resolved
+        and not scheduled_wait_dominant
+        and not productive_non_edit
     ):
-        silent_loop_boost = 0.44 * stagnation_ratio
+        if hesitation_steps >= 2 or (deliverable_steps == 0 and tail_new_targets == 0):
+            silent_loop_boost = 0.44 * stagnation_ratio
+        elif deliverable_steps == 0:
+            silent_loop_boost = 0.22 * stagnation_ratio
 
-    thrash_score = float(
-        np.clip(
-            0.62 * cos_component
-            + 0.34 * effective_error_ratio
-            + silent_loop_boost
-            + (0.14 if effective_loop_cos >= 0.84 else 0.0)
-            - 0.36 * progress_score
-            - (0.35 if productive_debug else 0.0),
-            0.0,
-            1.0,
-        )
+    raw_score = (
+        0.62 * cos_component
+        + 0.34 * effective_error_ratio
+        + silent_loop_boost
+        + (0.14 if effective_loop_cos >= 0.84 else 0.0)
+        - 0.36 * progress_score
+        - (0.35 if productive_debug else 0.0)
+        - (0.25 if productive_non_edit else 0.0)
+        - (0.35 if scheduled_wait_dominant else 0.0)
     )
+    thrash_score = float(np.clip(raw_score, 0.0, 1.0))
     thrash_detected = thrash_score >= thrash_threshold
+    if thrash_detected:
+        action = "advisory_inspect_error_loop" if raw_error_ratio >= 0.40 else "advisory_inspect_loop"
+    else:
+        action = "continue"
+
     return {
         "trace_id": trace_id,
         "thrash_detected": thrash_detected,
         "thrash_score": round(thrash_score, 4),
         "thrash_threshold": thrash_threshold,
-        "action": "early_abort_and_reroute" if thrash_detected else "continue",
+        "action": action,
+        "advisory_only": True,
+        "wait_chatter_detected": scheduled_wait_dominant,
         "mean_adj_cosine": round(mean_adj_cos, 4),
         "max_osc_cosine": round(max_osc_cos, 4),
         "all_pairs_cosine": round(all_pairs_cos, 4),
         "error_repeat_ratio": round(raw_error_ratio, 4),
         "stagnation_ratio": round(stagnation_ratio, 4),
         "tail_new_targets": tail_new_targets,
-        "productive_debug_progression": productive_debug,
+        "productive_debug_progression": productive_debug or productive_non_edit,
         "progress_score": round(progress_score, 4),
         "latency_ms": round((time.perf_counter() - t0) * 1000.0, 2),
-        "backend": embedder.backend_name,
+        "backend": backend_name,
     }
+
+
+def detect_agent_thrash(
+    embedder: LocalEmbedder,
+    steps: Sequence[str],
+    trace_id: str = "trace-0",
+    thrash_threshold: float = DEFAULT_THRASH_THRESHOLD,
+) -> Dict[str, Any]:
+    """Evaluate the last 3-6 agent trace steps for advisory loop/stall inspection."""
+    t0 = time.perf_counter()
+    raw_window = [s.strip()[:600] for s in steps[-6:] if s and s.strip()]
+    if len(raw_window) < 3:
+        return score_pre_embedded_window(
+            raw_window,
+            np.zeros((0, embedder.dim), dtype=np.float32),
+            embedder.backend_name,
+            trace_id=trace_id,
+            thrash_threshold=thrash_threshold,
+            start_time=t0,
+        )
+
+    norm_window = [normalize_step(s) for s in raw_window]
+    embs = embedder.encode(norm_window)
+    return score_pre_embedded_window(
+        norm_window,
+        embs,
+        embedder.backend_name,
+        trace_id=trace_id,
+        thrash_threshold=thrash_threshold,
+        start_time=t0,
+    )
 
 
 def predict_with_jepa_checkpoint(

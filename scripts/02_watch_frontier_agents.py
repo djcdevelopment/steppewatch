@@ -42,9 +42,20 @@ BARE_TOOL_ACK_RE = re.compile(
     r"updated\s+file\.?|"
     r"file\s+(?:created|updated|written|saved)\.?|"
     r"made\s+\d+\s+replacements?(?:\s+in\s+\S+)?\.?|"
-    r"ok\.?|done\.?|success\.?|"
+    r"ok\.?|done\.?|success\.?|acknowledged\.?|noted\.?|got\s+it\.?|"
     r"command\s+exited\s+with\s+code\s+0\.?"
     r")$",
+    re.I,
+)
+
+COMPACTION_WRAPPER_RE = re.compile(
+    r"^(?:"
+    r"<(?:command-name|command-message|local-command-|system-reminder|context-compaction)|"
+    r"this\s+session\s+is\s+being\s+continued\s+from\s+a\s+previous\s+conversation|"
+    r"\[?compaction\]?\s*[:\-]|"
+    r"conversation\s+compacted|"
+    r"summary\s+of\s+previous\s+conversation"
+    r")",
     re.I,
 )
 
@@ -55,6 +66,72 @@ def is_bare_tool_ack(text: str) -> bool:
     if len(compact) < 12 and compact.lower() in {"ok", "ok.", "done", "done.", "true", "null"}:
         return True
     return bool(BARE_TOOL_ACK_RE.match(compact))
+
+
+def is_compaction_or_wrapper_text(text: str) -> bool:
+    """Return True if text is a harness compaction or slash-command wrapper rather than real intent."""
+    compact = " ".join((text or "").split()).strip()
+    if not compact:
+        return True
+    return bool(COMPACTION_WRAPPER_RE.match(compact))
+
+
+def _read_tail_lines(path: Path, max_lines: int, max_tail_bytes: int = 2 * 1024 * 1024) -> Tuple[List[str], int]:
+    """Read the last `max_lines` of a JSONL file without loading 500+ MB logs into RAM."""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as f:
+            if size > max_tail_bytes:
+                f.seek(size - max_tail_bytes)
+                raw_bytes = f.read()
+                lines = raw_bytes.decode("utf-8", errors="ignore").splitlines()
+                # Discard partial first line after mid-file seek
+                if lines:
+                    lines = lines[1:]
+                return lines[-max_lines:], len(lines)
+            raw_bytes = f.read()
+        lines = raw_bytes.decode("utf-8", errors="ignore").splitlines()
+        return lines[-max_lines:], len(lines)
+    except OSError:
+        return [], 0
+
+
+def _read_head_intent(path: Path, max_head_bytes: int = 64 * 1024) -> str:
+    """Scan the top of a JSONL transcript for the opening substantive user intent."""
+    try:
+        with path.open("rb") as f:
+            raw_bytes = f.read(max_head_bytes)
+    except OSError:
+        return ""
+    for raw in raw_bytes.decode("utf-8", errors="ignore").splitlines()[:80]:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            obj = json.loads(raw)
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(obj, dict):
+            continue
+        rec_type = str(obj.get("type") or obj.get("role") or "").lower()
+        if rec_type in ("session_meta", "system"):
+            continue
+        payload = obj.get("payload") if isinstance(obj.get("payload"), dict) else {}
+        msg_obj = obj.get("message") if isinstance(obj.get("message"), dict) else {}
+        is_user = rec_type in ("user", "user_input") or str(payload.get("type", "")).lower() == "user_message"
+        if not is_user:
+            continue
+        text = (
+            _extract_text_from_content(msg_obj.get("content"))
+            or _extract_text_from_content(payload.get("message"))
+            or _extract_text_from_content(payload.get("content"))
+            or _extract_text_from_content(obj.get("content"))
+            or _extract_text_from_content(obj.get("text"))
+        ).strip()
+        compact = " ".join(text.split())
+        if len(compact) >= 8 and not is_compaction_or_wrapper_text(compact):
+            return compact[:400]
+    return ""
 
 
 def discover_recent_transcripts(max_files: int = 8, hermes_home: Optional[Path] = None) -> List[Tuple[str, Transcript]]:
@@ -102,21 +179,27 @@ def _extract_text_from_content(content: Any) -> str:
     return ""
 
 
-def parse_jsonl_transcript(path: Transcript, max_lines: int = 400) -> Dict[str, Any]:
-    """Extract normalized intent, substantive agent steps, and touched file hints."""
+def parse_jsonl_transcript(
+    path: Transcript,
+    max_lines: int = 400,
+    max_tail_bytes: int = 2 * 1024 * 1024,
+) -> Dict[str, Any]:
+    """Extract normalized intent, substantive agent steps, request boundaries, and file hints."""
     if isinstance(path, DatabaseSession):
         tail, line_count = read_database_session(path, max_lines)
+        head_intent = ""
     else:
-        try:
-            lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
-        except OSError:
-            lines = []
-        tail, line_count = lines[-max_lines:], len(lines)
-    intent = ""
+        head_intent = _read_head_intent(path)
+        tail, line_count = _read_tail_lines(path, max_lines=max_lines, max_tail_bytes=max_tail_bytes)
+
+    intent = head_intent
+    latest_intent = head_intent
     steps: List[str] = []
+    segment_breaks: List[int] = []
     touched: List[str] = []
     filtered_acks = 0
-    file_re = re.compile(r"\b([A-Za-z0-9_.\-/]+\.(?:py|cs|ts|tsx|js|go|rs|json|yaml|yml|md|sh))\b")
+    compaction_wrappers_skipped = 0
+    file_re = re.compile(r"\b([A-Za-z0-9_.\-/]+\.(?:py|cs|ts|tsx|js|go|rs|json|jsonl|yaml|yml|md|sh|txt|log))\b")
 
     for raw in tail:
         try:
@@ -158,30 +241,49 @@ def parse_jsonl_transcript(path: Transcript, max_lines: int = 400) -> Dict[str, 
         if not text:
             continue
 
-        if not intent and (
-            rec_type in ("user", "user_input")
-            or str(payload.get("type", "")).lower() == "user_message"
-            or "INTENT:" in text
-        ):
-            intent = text[:400]
-
         is_user_only = rec_type in ("user", "user_input") or str(payload.get("type", "")).lower() == "user_message"
-        if not is_user_only:
-            compact = " ".join(text.split())[:500]
-            if is_bare_tool_ack(compact):
-                filtered_acks += 1
-                continue
-            steps.append(compact)
-            for fn in file_re.findall(compact):
-                if fn not in touched:
-                    touched.append(fn)
+        compact_full = " ".join(text.split())
 
+        if is_compaction_or_wrapper_text(compact_full):
+            compaction_wrappers_skipped += 1
+            if steps and (not segment_breaks or segment_breaks[-1] != len(steps)):
+                segment_breaks.append(len(steps))
+            continue
+
+        if is_user_only:
+            if len(compact_full) >= 8:
+                if not intent:
+                    intent = compact_full[:400]
+                latest_intent = compact_full[:400]
+                if steps and (not segment_breaks or segment_breaks[-1] != len(steps)):
+                    segment_breaks.append(len(steps))
+            continue
+
+        if not intent and "INTENT:" in compact_full:
+            intent = compact_full[:400]
+            latest_intent = intent
+
+        compact = compact_full[:500]
+        if is_bare_tool_ack(compact):
+            filtered_acks += 1
+            continue
+        steps.append(compact)
+        for fn in file_re.findall(compact):
+            if fn not in touched:
+                touched.append(fn)
+
+    intent_is_placeholder = not bool(intent)
+    resolved_intent = intent or f"Supervise session {path.name}"
     return {
-        "intent": intent or f"Supervise session {path.name}",
+        "intent": resolved_intent,
+        "latest_intent": latest_intent or resolved_intent,
+        "intent_is_placeholder": intent_is_placeholder,
         "steps": steps,
+        "segment_breaks": segment_breaks,
         "touched_files": touched[:25],
         "line_count": line_count,
         "filtered_acks": filtered_acks,
+        "compaction_wrappers_skipped": compaction_wrappers_skipped,
     }
 
 
@@ -198,7 +300,7 @@ def build_residual_episode(
     steps = parsed["steps"]
     current_summary = steps[0] if steps else f"Session start ({source}: {trace_path.name})"
     end_summary = " | ".join(steps[-2:]) if steps else current_summary
-    intent_text = (explicit_intent or parsed["intent"])[:400]
+    intent_text = (explicit_intent or parsed.get("latest_intent") or parsed["intent"])[:400]
 
     embs = embedder.encode([current_summary, intent_text, end_summary])
     z_curr, z_intent, z_end = embs[0], embs[1], embs[2]
@@ -230,6 +332,7 @@ def build_residual_episode(
         },
         "intended_outcome": {
             "summary": intent_text,
+            "is_placeholder": bool(parsed.get("intent_is_placeholder", False)) if not explicit_intent else False,
         },
         "local_prediction": {
             "source": pred_source,
@@ -241,11 +344,13 @@ def build_residual_episode(
             "thrash_detected": bool(thrash.get("thrash_detected")),
             "thrash_score": float(thrash.get("thrash_score", 0.0)),
             "action": thrash.get("action", "continue"),
+            "advisory_only": True,
         },
         "assessment_vs_expectations": {
             "state_surprise_delta": state_surprise,
             "risk_prediction_error": risk_error,
             "actual_risk_target": round(actual_risk, 4),
+            "target_source": "heuristic_detector_proxy",
             "human_label": None,
         },
     }
@@ -270,7 +375,11 @@ def evaluate_once(
             continue
         last_seen_lines[key] = parsed["line_count"]
 
-        thrash = detect_agent_thrash(embedder, parsed["steps"], trace_id=path.stem)
+        # Only score steps within the active request segment so prior turns don't bleed into tail checks.
+        steps = parsed["steps"]
+        breaks = parsed.get("segment_breaks") or []
+        active_steps = steps[breaks[-1]:] if breaks and breaks[-1] < len(steps) else steps
+        thrash = detect_agent_thrash(embedder, active_steps, trace_id=path.stem)
         ep = build_residual_episode(
             embedder=embedder,
             source=source,
@@ -293,6 +402,8 @@ def evaluate_once(
             "thrash_detected": bool(thrash["thrash_detected"]),
             "thrash_score": float(thrash["thrash_score"]),
             "action": thrash["action"],
+            "advisory_only": True,
+            "wait_chatter_detected": bool(thrash.get("wait_chatter_detected", False)),
             "predicted_stall_risk": pred_r,
             "state_surprise_delta": delta,
             "latency_ms": thrash["latency_ms"],
@@ -301,7 +412,7 @@ def evaluate_once(
         results.append(summary_row)
 
         if not json_mode:
-            flag = "ALERT:STALL_OR_LOOP" if thrash["thrash_detected"] else "OK"
+            flag = f"ADVISORY:{thrash['action'].upper()}" if thrash["thrash_detected"] else "OK"
             print(
                 f"[{time.strftime('%H:%M:%S')}] [{flag}] ({source}) {path.name} "
                 f"| steps={len(parsed['steps'])} (acks_skipped={parsed['filtered_acks']}) "
