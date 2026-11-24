@@ -269,7 +269,7 @@ class Issue2CalibrationAndParityTest(unittest.TestCase):
 
     def test_cli_edge_cases_missing_trace_missing_repo_and_empty_home(self):
         """Public CLI entrypoints fail cleanly on bad inputs and succeed cleanly on empty homes."""
-        env = dict(os.environ, HOME=str(self.root))
+        env = dict(os.environ, HOME=str(self.root), USERPROFILE=str(self.root))
         env.setdefault("PYTHONUSERBASE", site.getuserbase())
         env.pop("PYTHONPATH", None)
 

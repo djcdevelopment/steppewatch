@@ -25,7 +25,8 @@ class HermesAdapterTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(dir=ROOT)
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name)
-        self.hermes = self.home / "custom #? hermes"
+        # '?' is illegal in Windows NTFS paths; still test spaces and '#' on Windows, plus '?' on POSIX.
+        self.hermes = self.home / ("custom # hermes" if os.name == "nt" else "custom #? hermes")
         self.records = [
             {"role": "session_meta", "content": "metadata is not a step"},
             {"role": "system", "content": "system is not a step"},
@@ -165,7 +166,7 @@ class HermesAdapterTest(unittest.TestCase):
         self.assertEqual(watcher.parse_jsonl_transcript(self.home / ".codex/sessions/2026/11/21/rollout-1.jsonl")["steps"], ["Patched worker.py"])
 
     def test_all_cli_entrypoints_custom_home(self):
-        env = dict(os.environ, HOME=str(self.home))
+        env = dict(os.environ, HOME=str(self.home), USERPROFILE=str(self.home))
         env.setdefault("PYTHONUSERBASE", site.getuserbase())
         env.pop("PYTHONPATH", None)
         for script, flags in [
